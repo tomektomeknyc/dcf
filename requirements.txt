@@ -10,6 +10,7 @@ python-dotenv
 refinitiv-dataplatform==1.0.0a21
 streamlit-extras
 feedparser>=6.0.0
+xlrd>=2.0.1
 
 
 
