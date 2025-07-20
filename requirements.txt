@@ -1,6 +1,13 @@
 streamlit
 pandas
 plotly
+numpy
 openpyxl
 beautifulsoup4
+lxml
+requests
+python-dotenv
+refinitiv-dataplatform-eikon
+
+
 
