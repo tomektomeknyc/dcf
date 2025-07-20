@@ -6,7 +6,9 @@ from openai import OpenAI
 
 # ─── LLM REAL CLIENT ──────────────────────────────────────────────────────────────
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
+
 
 ##### LLM START #####
 def call_llm(prompt: str) -> str:
