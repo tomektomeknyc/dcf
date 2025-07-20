@@ -11,12 +11,8 @@ import streamlit as st
 if "REFINITIV_APP_KEY" in st.secrets:
     API_KEY = st.secrets["REFINITIV_APP_KEY"]
 else:
-    from dotenv import load_dotenv
-    load_dotenv()
-    API_KEY = os.getenv("REFINITIV_APP_KEY")
-
-if not API_KEY:
-    raise EnvironmentError("REFINITIV_APP_KEY not found")
+    import streamlit as st
+    API_KEY = st.secrets["REFINITIV_APP_KEY"]
 
 
 ek.set_app_key(API_KEY)
