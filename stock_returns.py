@@ -6,12 +6,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import streamlit as st
 
-# ─── Load API key from .env ──────────────────────────────────────────────────
-load_dotenv()
-API_KEY = os.getenv("REFINITIV_APP_KEY")
+if "REFINITIV_APP_KEY" in st.secrets:
+    API_KEY = st.secrets["REFINITIV_APP_KEY"]
+else:
+    from dotenv import load_dotenv
+    load_dotenv()
+    API_KEY = os.getenv("REFINITIV_APP_KEY")
+
 if not API_KEY:
-    raise EnvironmentError("REFINITIV_APP_KEY not found in .env")
+    raise EnvironmentError("REFINITIV_APP_KEY not found")
+
 
 ek.set_app_key(API_KEY)
 
