@@ -18,8 +18,9 @@ from pathlib import Path
 import streamlit as st
 
 # Initialize OpenAI client
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 
 @st.cache_data(show_spinner=True, max_entries=20)
 def generate_fcff_projections(ticker, current_fcff, historical_data=None):
