@@ -8,7 +8,7 @@ from openai import OpenAI
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-
+##### LLM START #####
 def call_llm(prompt: str) -> str:
     """
     Send prompt to OpenAI and return the raw text response.
@@ -99,3 +99,4 @@ def compute_fcff(
     fcff_series.loc["Terminal Value"] = terminal_value
     
     return fcff_series
+##### LLM END #####
