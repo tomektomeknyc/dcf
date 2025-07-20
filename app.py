@@ -2081,7 +2081,7 @@ with tab_main:
             *FF-5 factor betas data courtesy of the [Kenneth R. French Data Library](
             https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/index.html).*
 
-            Source code at Github: https://github.com/tomektomeknyc/dcf
+            Source code on Github: https://github.com/tomektomeknyc/dcf
 
             """,
             unsafe_allow_html=True,
