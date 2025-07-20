@@ -4,7 +4,9 @@ import inspect, re
 from pathlib import Path
 
 # ─── Initialize OpenAI Client ─────────────────────────────────────────────
+
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 
 # ─── Ask LLM (OpenAI GPT-4o-mini) ─────────────────────────────────────────
 def ask_llm(question: str) -> str:
