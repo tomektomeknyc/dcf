@@ -5,7 +5,8 @@ from pathlib import Path
 
 # ─── Initialize OpenAI Client ─────────────────────────────────────────────
 
-client = OpenAI(api_key="sk-proj-...")  
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
+
 
 
 # ─── Ask LLM (OpenAI GPT-4o-mini) ─────────────────────────────────────────
