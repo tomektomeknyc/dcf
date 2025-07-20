@@ -10,6 +10,7 @@ from openai import OpenAI
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
 
 
+
 ##### LLM START #####
 def call_llm(prompt: str) -> str:
     """
