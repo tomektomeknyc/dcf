@@ -19,7 +19,9 @@ import streamlit as st
 
 # Initialize OpenAI client
 
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
+
 
 
 @st.cache_data(show_spinner=True, max_entries=20)
