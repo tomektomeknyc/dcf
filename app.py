@@ -1,8 +1,58 @@
 # app.py
 import time
 import streamlit as st
+from news_fetcher import get_headlines
+from stock_analysis_renderer import render_financial_analysis
+
 # ─── 1) Streamlit page config ─────────────────────────────────
-st.set_page_config(page_title="🚀 Starship Finance Simulator", layout="wide",initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="🚀 Starship Finance Simulator", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
+selected_stocks = st.session_state.get("selected_stocks", [])
+
+# Now safe to use st.session_state and other Streamlit commands
+# Show general market headlines
+if not selected_stocks or st.checkbox("📰 Show market headlines"):
+    st.markdown("### 📰 Market News")
+    headlines = get_headlines()
+
+if headlines:
+    with st.container():
+        # No leading newline in triple quote below!
+        content = """<div style="height: 300px; overflow-y: auto; padding: 1em; background-color: #111111; border: 1px solid #444; border-radius: 8px;">"""
+        for item in headlines:
+            title = item.get("title", "No Title")
+            url = item.get("link", "#")
+            published = item.get("published", "").replace("T", " ").replace("Z", "")
+
+            content += f"""
+<div style="margin-bottom: 1em;">
+  <a href="{url}" target="_blank" style="color:#1E90FF; font-weight:600; font-size:16px; text-decoration:none;">{title}</a><br>
+  <span style="font-style: italic; color: #BBBBBB;"><i>Published: {published}</i></span>
+</div>
+"""
+        content += "</div>"
+        st.markdown(content, unsafe_allow_html=True)
+else:
+    st.info("No news available right now.")
+
+
+
+
+
+
+
+
+# Continue the rest of your app only when stocks are selected
+if selected_stocks:
+    st.markdown(f"### Selected Stocks: {', '.join(selected_stocks)}")
+    # Insert your stock analysis rendering functions here
+    render_financial_analysis(selected_stocks)
+
+
+
 # ─── Initialize our "have we run X?" flags ──────────────────────────────────
 for _key in ("ff5_ran", "capm_ran", "damo_ran"):
     if _key not in st.session_state:
@@ -47,6 +97,7 @@ from fcf_calculations import compute_fcff
 from dcf_valuation import calculate_all_intrinsic_values
 from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
+from fin_report_tab import render_fin_report_tab
 
 # Show a logo at the top of the sidebar
 logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
@@ -555,8 +606,8 @@ if sel_tickers and any_beta:
         use_container_width=True,
     )
 # — Create two tabs: Main vs Project Description —
-tabs = st.tabs(["Main", "Project Description", "Q&A"])
-tab_main, tab_desc, tab_qa = tabs
+tabs = st.tabs(["Main", "Project Description", "Q&A", "Fin Report Generator"])
+tab_main, tab_desc, tab_qa, tab_fin_report = tabs
 
 with tab_main:
     with st.expander("Show which models have run", expanded=False):
@@ -2091,7 +2142,7 @@ with tab_main:
             *FF-5 factor betas data courtesy of the [Kenneth R. French Data Library](
             https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/index.html).*
 
-            Source code on Github: https://github.com/tomektomeknyc/dcf
+            Source code at Github: https://github.com/tomektomeknyc/dcf
 
             """,
             unsafe_allow_html=True,
@@ -2101,4 +2152,8 @@ with tab_desc:
 
 with tab_qa:
     render_qa_tab()
+
+with tab_fin_report:
+    render_fin_report_tab(selected_stocks)
+
    
