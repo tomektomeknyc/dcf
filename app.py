@@ -436,13 +436,12 @@ st.sidebar.markdown(
 # ─── 3a) Choose Estimation Methods ─────────────────────────────────────────────
 st.sidebar.markdown(
     """
-    <div style='display: flex; align-items: center; gap: 0.3em;'>
-        <span style='font-weight: bold; font-size: 1.2em;'>⚙️ Estimation Methods</span>
-        <span style='color: gray; cursor: help;' title='When all (FF5, CAPM, Damo α) are selected, the Intrinsic Value Table will appear below.'>ℹ️</span>
-    </div>
+    <span>⚙️ <strong>Estimation Methods</strong></span>
+    <span style='color:gray; cursor:help;' title='When all (FF5, CAPM, Damo α) are selected, the Intrinsic Value Table will appear below.'>ℹ️</span>
     """,
     unsafe_allow_html=True
 )
+
 
 
 methods = st.sidebar.multiselect(
