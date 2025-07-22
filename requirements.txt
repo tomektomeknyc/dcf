@@ -15,5 +15,7 @@ statsmodels==0.13.5
 scipy==1.11.4
 numpy==1.24.4
 openai
+fpdf
+
 
 
