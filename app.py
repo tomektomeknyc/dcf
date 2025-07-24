@@ -15,7 +15,7 @@ selected_stocks = st.session_state.get("selected_stocks", [])
 # Now safe to use st.session_state and other Streamlit commands
 # Show general market headlines
 if not selected_stocks or st.checkbox("📰 Show market headlines"):
-    st.markdown("### 📰 Market News")
+    #st.markdown("### 📰 Market News")
     headlines = get_headlines()
 
 if headlines:
