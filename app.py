@@ -19,31 +19,27 @@ if not selected_stocks or st.checkbox("📰 Show market headlines"):
     headlines = get_headlines()
 
 if headlines:
-    with st.container():
-        # No leading newline in triple quote below!
-        content = """<div style="height: 300px; overflow-y: auto; padding: 1em; background-color: #111111; border: 1px solid #444; border-radius: 8px;">"""
+    with st.expander("🗞️ Show market headlines"):
+        html_lines = []
         for item in headlines:
             title = item.get("title", "No Title")
             url = item.get("link", "#")
             published = item.get("published", "").replace("T", " ").replace("Z", "")
+            
+            html_lines.append(
+                f'<div style="margin-bottom: 1em;">'
+                f'<a href="{url}" target="_blank" style="color:#1E90FF; font-weight:600; font-size:16px; text-decoration:none;">{title}</a><br>'
+                f'<span style="font-style: italic; color: #BBBBBB;"><i>Published: {published}</i></span>'
+                f'</div>'
+            )
 
-            content += f"""
-<div style="margin-bottom: 1em;">
-  <a href="{url}" target="_blank" style="color:#1E90FF; font-weight:600; font-size:16px; text-decoration:none;">{title}</a><br>
-  <span style="font-style: italic; color: #BBBBBB;"><i>Published: {published}</i></span>
-</div>
-"""
-        content += "</div>"
-        st.markdown(content, unsafe_allow_html=True)
-else:
-    st.info("No news available right now.")
+        full_html = (
+            '<div style="height: 300px; overflow-y: auto; padding: 1em; background-color: #111111; border: 1px solid #444; border-radius: 5px;">'
+            + ''.join(html_lines) +
+            '</div>'
+        )
 
-
-
-
-
-
-
+        st.markdown(full_html, unsafe_allow_html=True)
 
 # Continue the rest of your app only when stocks are selected
 if selected_stocks:
