@@ -522,9 +522,7 @@ for reg in ("US", "Europe", "AU_NZ"):
 st.session_state["damo_files"] = damo_files
 # Fetch & cache the industry‐beta table for the first selected ticker’s region
 if sel_tickers:
-    #first = sel_tickers[0]
-    #region0 = ticker_to_region(first)
-    #st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region0)
+    
     damo_betas = {}
     for t in sel_tickers:
         region = ticker_to_region(t)
