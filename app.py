@@ -522,10 +522,16 @@ for reg in ("US", "Europe", "AU_NZ"):
 st.session_state["damo_files"] = damo_files
 # Fetch & cache the industry‐beta table for the first selected ticker’s region
 if sel_tickers:
-    first = sel_tickers[0]
-    region0 = ticker_to_region(first)
-    st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region0)
-
+    #first = sel_tickers[0]
+    #region0 = ticker_to_region(first)
+    #st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region0)
+    damo_betas = {}
+    for t in sel_tickers:
+        region = ticker_to_region(t)
+        damo_df = fetch_damodaran_industry_betas(region)
+        industry = ticker_industry_map.get(t)
+        match = find_industry_beta(damo_df, None, industry) if industry and damo_df is not None else None
+        damo_betas[t] = match["beta"] if match else None
 
 # ─── Sidebar toggle for Damodaran β in the combined β-chart ─────────────
 show_damo = st.sidebar.checkbox(
