@@ -10,14 +10,14 @@ from openai import OpenAI
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
 
 
-
 ##### LLM START #####
+
 def call_llm(prompt: str) -> str:
     """
     Send prompt to OpenAI and return the raw text response.
     """
     response = client.chat.completions.create(
-        model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model="gpt-4o",  # The newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
         max_tokens=200,
@@ -39,6 +39,7 @@ def compute_fcff(
     df_cf: pd.DataFrame,
     df_bs: pd.DataFrame,
     year_col: str = "Year",
+    fcff_2030=None
 ) -> pd.Series:
     """
     Compute historical Free Cash Flow to Firm (FCFF) for a given ticker.
@@ -94,12 +95,18 @@ def compute_fcff(
     fcff_2026 = last_fcff * (1 + g)
     
     # Calculate Terminal Value using Gordon Growth Model
-    terminal_value = fcff_2026 * (1 + g) / (r - g)
-    
+    # Use LLM-projected FCFF_2030 if available, else fallback to last calculated
+    fcff_terminal = fcff_2030 if 'fcff_2030' in locals() else fcff_2026
+    terminal_value = fcff_terminal * (1 + g) / (r - g)
+
+    #terminal_value = fcff_2026 * (1 + g) / (r - g)
+    st.write(f"DEBUG: FCFF={fcff_2026}, g={g}, r={r}, Terminal Value={terminal_value}")
+
     # Create the series with historical + projected values
     fcff_series = fcff_historical.copy()
     fcff_series.loc[2026] = fcff_2026
     fcff_series.loc["Terminal Value"] = terminal_value
     
     return fcff_series
-##### LLM END #####
+
+##### LLM END #####   
