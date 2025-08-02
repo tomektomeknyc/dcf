@@ -3,13 +3,43 @@ import time
 import streamlit as st
 from news_fetcher import get_headlines
 from stock_analysis_renderer import render_financial_analysis
-
+from pathlib import Path
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
     page_title="🚀 Starship Finance Simulator", 
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
+#####################################
+# Show Massey logo at the top of the sidebar
+logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
+if logo_path.exists():
+   st.sidebar.image(str(logo_path), width=200, caption="")
+
+#st.sidebar.markdown("## ❓ Q&A")
+qa_enabled = st.sidebar.checkbox("Enable Q&A Mode", key="qa_toggle")
+# If Q&A mode is disabled, clear Q&A-related session state
+if not qa_enabled:
+    for key in list(st.session_state.keys()):
+        if key.startswith("qa_") or key in ["qa_input", "qa_run"]:
+            del st.session_state[key]
+
+
+# Route based on Q&A Toggle
+if qa_enabled:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent / "qa_engine"))
+    from qa_tab import render_qa_tab
+    render_qa_tab()
+
+    # render_qa_tab()
+    st.stop()  # Stop rest of app from running
+
+#####################################
+
+
+
 selected_stocks = st.session_state.get("selected_stocks", [])
 
 # Now safe to use st.session_state and other Streamlit commands
@@ -73,7 +103,7 @@ from fetch_damodaran_betas import (
 )
 from project_description_tab import render_project_description_tab
 import plotly.express as px
-from pathlib import Path
+
 from scrape_ff5 import get_ff5_data_by_folder
 import os
 import plotly.graph_objects as go
@@ -90,15 +120,17 @@ from regression_engine import (
 from ticker_to_industry import ticker_industry_map
 from metrics import compute_driver_metrics
 from fcf_calculations import compute_fcff 
-from dcf_valuation import calculate_all_intrinsic_values
+from dcf_valuation import calculate_all_intrinsic_values, generate_fcff_projections
 from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
+import dcf_valuation  
 
-# Show a logo at the top of the sidebar
-logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
-if logo_path.exists():
-   st.sidebar.image(str(logo_path), width=200, caption="")
+
+# # Show Massey logo at the top of the sidebar
+# logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
+# if logo_path.exists():
+#    st.sidebar.image(str(logo_path), width=200, caption="")
 # ─── Ticker_to_region ──────────────────────────────────────────────────
 def ticker_to_region(ticker: str) -> str:
     parts = ticker.split(".")
@@ -315,7 +347,13 @@ def build_dataset():
   - df["CapEx"]
   - df["ChangeNWC"]
 )
-##### FCFF END #####
+##### FCFF END ##### 
+    
+    # After you calculate or load your historical FCFF from Excel:
+    #print("DEBUG FCFF HISTORICAL ADSK.O (raw Excel):")
+    #print(df[df["Ticker"] == "ADSK.O"][["Year", "FCFF"]]) 
+
+
     # Debug: Print FCFF components for first few rows
     # print("DEBUG: FCFF Components:")
     # for i, row in df.head(3).iterrows():
@@ -323,7 +361,7 @@ def build_dataset():
     
 ##### FCFE START #####
 # 2) FCFE = FCFF – (InterestExpense × (1–tax_rate)) + ΔDebt – ΔCash,
-# Using the per‐row tax_rate we built earlier
+# Using the per‐row tax_rate that was built before
     df["FCFE"] = (
     df["FCFF"]
   - df["InterestExpense"] * (1 - df["tax_rate"])
@@ -344,38 +382,8 @@ def build_dataset():
    
     df["EV/EBITDA"] = df["EV"] / df["EBITDA"].replace(0, pd.NA)
 
+# Create empty DataFrames for Cash Flow and Balance Sheet masters
 
-##### TV START #####
-# ─── 4) Terminal Value Calculation: FCFF₂₆ = FCFF₂₅ × (1 + g) ─────────────────
-    terminal_rows = []
-    for ticker in df["Ticker"].unique():
-        ticker_data = df[df["Ticker"] == ticker].sort_values("Year")
-        if not ticker_data.empty:
-            # Get the most recent year's FCFF (FCFF₂₅)
-            latest_row = ticker_data.iloc[-1]
-            fcff_2025 = latest_row["FCFF"]
-            
-            # Simple growth rate assumption (can be made dynamic later)
-            g = 0.03  # 3% perpetual growth rate
-            
-            # Calculate FCFF₂₆ = FCFF₂₅ × (1 + g)
-            fcff_2026 = fcff_2025 * (1 + g)
-            
-            # Create Terminal Value row
-            terminal_row = latest_row.copy()
-            terminal_row["Year"] = "Terminal Value"
-            terminal_row["FCFF"] = fcff_2026
-            terminal_rows.append(terminal_row)
-    
-    # Append Terminal Value rows to the main DataFrame
-    if terminal_rows:
-        terminal_df = pd.DataFrame(terminal_rows)
-        df = pd.concat([df, terminal_df], ignore_index=True)
-
-
-
-##### TV END #####
-    # Create empty DataFrames for Cash Flow and Balance Sheet masters
     df_cf_master = pd.DataFrame()  # ✅ FIXED: Now properly defined
     df_bs_master = pd.DataFrame()  # ✅ FIXED: Now properly defined
 
@@ -395,6 +403,23 @@ st.session_state["drivers"] = drivers
 # ─── 3) Sidebar: selectors & sliders ─────────────────────────────────────────────
 tickers     = sorted(df["Ticker"].unique())
 sel_tickers = st.sidebar.multiselect("🔎 Companies", options=tickers, default=[])
+
+#st.cache_data.clear() #<-- Clear cache every time I add/remove stocks for calculations consistency while running llm simulations
+
+##########################
+# --- Conditional cache clear: only when adding/removing stocks and list is not empty ---
+if "prev_sel_tickers" in st.session_state:
+    prev = set(st.session_state.prev_sel_tickers)
+    curr = set(sel_tickers)
+    # Trigger cache clear if list not empty and set has changed (added or removed stocks)
+    if curr and prev != curr:
+        st.cache_data.clear()
+else:
+    if sel_tickers:  # First run with non-empty list
+        st.cache_data.clear()
+
+##########################
+
 
 for ticker in sel_tickers:
     # slice out only the historical rows for that ticker
@@ -520,9 +545,14 @@ for reg in ("US", "Europe", "AU_NZ"):
         # otherwise download and save
         damo_files[reg] = _download_region_beta(reg)
 st.session_state["damo_files"] = damo_files
+
 # Fetch & cache the industry‐beta table for the first selected ticker’s region
+
 if sel_tickers:
-    
+    # first = sel_tickers[0]
+    # region0 = ticker_to_region(first)
+    # st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region0)
+
     damo_betas = {}
     for t in sel_tickers:
         region = ticker_to_region(t)
@@ -530,6 +560,7 @@ if sel_tickers:
         industry = ticker_industry_map.get(t)
         match = find_industry_beta(damo_df, None, industry) if industry and damo_df is not None else None
         damo_betas[t] = match["beta"] if match else None
+
 
 # ─── Sidebar toggle for Damodaran β in the combined β-chart ─────────────
 show_damo = st.sidebar.checkbox(
@@ -605,9 +636,12 @@ if sel_tickers and any_beta:
         height=300,
         use_container_width=True,
     )
+
+
+
 # — Create two tabs: Main vs Project Description —
-tabs = st.tabs(["Main", "Project Description", "Q&A", "Fin Report Generator"])
-tab_main, tab_desc, tab_qa, tab_fin_report = tabs
+tabs = st.tabs(["Main", "Project Description", "Fin Report Generator"])
+tab_main, tab_desc, tab_fin_report = tabs
 
 with tab_main:
     with st.expander("Show which models have run", expanded=False):
@@ -835,7 +869,7 @@ with tab_main:
     # Cache it
                 stock_rets[ticker] = stock_ret
 
-    # choomonthly = (1 + stock_ret).resample("M").prod() - 1se the right market series
+    
                 region     = ticker_to_region(ticker)
                 market_ret = st.session_state["market_returns"].get(region)
                 if market_ret is None:
@@ -1238,6 +1272,16 @@ with tab_main:
 
     # ─── 8) Data Table ─────────────────────────────────────────────────────────────
     st.markdown("### 📊 Data Table")
+    #########################-------->#### Arrow Sign   ########
+    # st.markdown(
+    # """
+    # <p style="text-align:right; font-size:0.85rem; color:#888;">
+    # ⇆ <em>Slide&nbsp;→</em> to view additional financial metrics
+    # </p>
+    # """,
+    # unsafe_allow_html=True,
+    # )
+    ##########################################################      
     st.dataframe(
         sim[[
             "Ticker","Year","EBITDA","CapEx",
@@ -1459,9 +1503,9 @@ with tab_main:
         st.session_state["capm_ran"] = True
 
         # Debug: Show what we have in CAPM residuals
-        st.sidebar.write(f"DEBUG: CAPM residuals keys: {list(st.session_state.get('capm_resids', {}).keys())}")
-        st.sidebar.write(f"DEBUG: Selected tickers: {sel_tickers}")
-
+        #st.sidebar.write(f"DEBUG: CAPM residuals keys: {list(st.session_state.get('capm_resids', {}).keys())}")
+        #st.sidebar.write(f"DEBUG: Selected tickers: {sel_tickers}")
+     
         # Update the capm variable for the chart
         capm = {
             t: st.session_state["capm_results"][t]
@@ -1504,7 +1548,7 @@ with tab_main:
         if has_capm_data:
             for t, cres in capm.items():
                 fig.add_trace(go.Scatter(
-                    x=list(cres.keys()),            # This generalizes in case you ever add more factors
+                    x=list(cres.keys()),            # This generalizes in case I ever add more factors
                     y=list(cres.values()),          # My β value(s) for each factor
                     mode="lines+markers",
                     name=f"{t} (CAPM)",
@@ -1989,38 +2033,70 @@ with tab_main:
             debt = row.get("Debt", 0)
             fcfe = fcff - (interest * (1 - tax_rate)) + delta_debt
 
+            # Start the ticker loop (before calculating TV)
+
+            tv_map = {}
+            n = 4
+            ###################### LLM TV calculation ####################################
+            try:
+                # Get LLM projections and latest projected FCFF
+                projections, fcff_2030 = generate_fcff_projections(ticker, fcff)
+                # Extract g and r from session state (they’re stored per ticker)
+                g = st.session_state["fcff_projection_cache"][ticker]["g"]
+                r = st.session_state["fcff_projection_cache"][ticker]["r"]
+                
+                # msg =st.session_state["fcff_projection_cache"][ticker]["msg"] 
+                # print(f"DEBUG TV in app.py INPUTS: {ticker} | msg={msg} | g={g} | r={r} | n={n}")
+                # msg = f"LLM FCFF projections (2026-2030) for  {ticker}:  {projections}  | growth rate (g): {g:.4f},  discount rate (r) : {r:.4f}, Terminal Value (2026) : {formatted_tv}"
+                TV = (fcff_2030  * (1 + r)) / (r - g)
+                
+                PV_TV = TV / ((1 + r) ** n)
+                formatted_tv = f"{PV_TV:,.0f} M"
+                tv_map[ticker] = formatted_tv  # Store formatted TV for each ticker
+               
+            except Exception as e:
+                formatted_tv = "-"
+
+
+            
             fcff_data.append({
                 "Ticker": ticker,
                 "FCFF (Yr N)": f"{fcff:,.0f}",
                 "FCFE (Yr N)": f"{fcfe:,.0f}",
                 "Sales (M)":      f"{sales:,.0f}",
-                "Terminal Value (M)": "-",          # To be filled in next step
+                "Terminal Value (M)": formatted_tv,          # To be filled in next step
                 "Shares Outstanding (M)": "-",      # To be filled in next step
                 "Intrinsic Value (CAPM)": "-",  # To be filled in later
                 "Intrinsic Value (FF5)": "-",
                 "Intrinsic Value (Damo)": "-",
             })
 
-        # fcff_table = pd.DataFrame(fcff_data)
+##### TV START #####     
+        # Terminal Value Pipeline - after WACC table, before Intrinsic Value & Cash Flow Summary table where llms deliver Terminal Value
+        llm_msgs = []
+        llm_tv_debug_dict = st.session_state.get("llm_tv_debug_msgs", {})
+        for t in sel_tickers:      # sel_tickers = list of selected tickers
+            msg = llm_tv_debug_dict.get(t)
+            if msg:
+                llm_msgs.append(msg)
+
+        with st.expander("LLM FCFF projections (2026-2030), Terminal Value (2026)", expanded=False):
+            if llm_msgs:
+                for msg in llm_msgs:
+                    st.markdown(f"**{msg}**")
+            else:
+                st.info("No LLM FCFF projection messages available.")
 
 
-        #  Then display the table
         fcff_table = pd.DataFrame(fcff_data)
-        
+
         # 1) Pull Terminal Values out of your main `df` (I appended these earlier)
         tv_series = (
             df[df["Year"] == "Terminal Value"]
             .set_index("Ticker")["FCFF"]
         )
-
-        # 2) Map them into the summary table (leaving "-" where no TV exists)
-        fcff_table["Terminal Value (M)"] = (
-            fcff_table["Ticker"]
-            .map(lambda ticker: f"{tv_series.get(ticker, 0):.3f}" if pd.notna(tv_series.get(ticker)) else "-")
-        )
-
-        # 3) Re-add the placeholder columns so the layout matches your original
-        
+##### TV END #####
+      
         # Get actual shares outstanding from the data
         for idx, row_data in fcff_table.iterrows():
             ticker = row_data["Ticker"]
@@ -2034,8 +2110,6 @@ with tab_main:
                 else "-"
         )
       
-
-        #####################################################
         # ── 3.1) Grab Year‑N raw metrics for each ticker ──────────────────────────────
         df_year = df[df["Year"] == sel_year].set_index("Ticker")
         ev_series       = df_year["EV"]
@@ -2055,12 +2129,18 @@ with tab_main:
             ) if pd.notna(shares_series.get(t, pd.NA)) and shares_series.get(t, pd.NA) != 0 else pd.NA
         )
 
-        ######################################################
+        
         # 4) Only display table when all estimation methods are selected
         required_methods = {"CAPM", "FF-5", "Damo α"}
         if required_methods.issubset(set(methods)) and capm_ran and ff5_ran and damo_ran:
+            ######################## NEW CODE #########################
 
-        # 1) Heavy LLM/DCF work inside the spinner
+            selected_set = set(sel_tickers)
+            dcf_valuation.all_debugs = {k: v for k, v in dcf_valuation.all_debugs.items() if k in selected_set}
+            #fcff_table = None #<----- Forces full recalclation, do not use with st.cache_data.clear()
+
+
+          # 1) Heavy LLM/DCF work inside the spinner
             with st.spinner("🧮 Calculating intrinsic‑value tables… this may take 10–20 s."):
                 fcff_table = calculate_all_intrinsic_values(fcff_table, wacc_df, df)
 
@@ -2072,7 +2152,7 @@ with tab_main:
             st.markdown(
             """
             <p style="text-align:right; font-size:0.85rem; color:#888;">
-            ⇆ <em>slide&nbsp;→</em> to view “Implied Price / Share”
+            ⇆ <em>Slide&nbsp;→</em> to view "Implied Price / Share"
             </p>
             """,
             unsafe_allow_html=True,
@@ -2136,6 +2216,18 @@ with tab_main:
             )
             
             st.plotly_chart(fig_intrinsic, use_container_width=True, key="intrinsic_value_chart")
+            
+            
+            with st.expander("Show All Intrinsic Value Debug Output"):
+                for ticker in sorted(sel_tickers):
+                    if ticker in dcf_valuation.all_debugs:
+                        for method in ["CAPM", "FF5", "Damo"]:
+                            if method in dcf_valuation.all_debugs[ticker]:
+                                # dbg_line = dcf_valuation.all_debugs[ticker][method]
+                                # st.write(f"{ticker} [{method}]: {dbg_line}")
+                                 st.write(dcf_valuation.all_debugs[ticker][method])
+  
+            
             st.markdown(
             """
             All figures are reported in local currency (millions) for each company.<br>
@@ -2150,8 +2242,8 @@ with tab_main:
 with tab_desc:
     render_project_description_tab()
 
-with tab_qa:
-    render_qa_tab()
+
+
 
 with tab_fin_report:
     render_fin_report_tab(selected_stocks)
