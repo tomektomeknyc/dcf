@@ -1,3 +1,4 @@
+#qa_tab.py
 import streamlit as st
 from openai import OpenAI
 import inspect, re
@@ -58,7 +59,8 @@ def render_qa_tab():
 
         files_to_search = {
             "APP": app_dir / "app.py",
-            "FCF": app_dir / "fcf_calculations.py"
+            "FCF": app_dir / "fcf_calculations.py",
+            "DCF": app_dir / "dcf_valuation.py"
         }
 
         # 🔑 Map keywords to block labels
@@ -82,6 +84,8 @@ def render_qa_tab():
             "llm": "LLM"
         }
 
+        
+
         shown_block = False
         for trigger, label in code_keywords.items():
             if trigger in q_lower:
@@ -91,13 +95,14 @@ def render_qa_tab():
                         st.markdown(f"### 📄 Source code for `{label}` block (from `{file_label}`):")
                         st.code(snippet, language="python")
                         shown_block = True
-                        break
+                # Don't break here — we want to check all files for this label
             if shown_block:
-                break
+                break  # Only break if one keyword was triggered, otherwise continue to scan other keywords
+
 
         with st.spinner("Querying LLM…"):
             answer = ask_llm(q)
-        st.markdown("**Answer:**")
+        st.markdown("**💬 AI Answer:**")
         st.write(answer)
 
         # Optional: show the source of ask_llm()
