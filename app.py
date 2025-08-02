@@ -10,14 +10,15 @@ st.set_page_config(
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
-#####################################
+
 # Show Massey logo at the top of the sidebar
 logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
 if logo_path.exists():
    st.sidebar.image(str(logo_path), width=200, caption="")
 
-#st.sidebar.markdown("## ❓ Q&A")
+
 qa_enabled = st.sidebar.checkbox("Enable Q&A Mode", key="qa_toggle")
+
 # If Q&A mode is disabled, clear Q&A-related session state
 if not qa_enabled:
     for key in list(st.session_state.keys()):
@@ -35,9 +36,6 @@ if qa_enabled:
 
     # render_qa_tab()
     st.stop()  # Stop rest of app from running
-
-#####################################
-
 
 
 selected_stocks = st.session_state.get("selected_stocks", [])
@@ -126,11 +124,6 @@ from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
 import dcf_valuation  
 
-
-# # Show Massey logo at the top of the sidebar
-# logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
-# if logo_path.exists():
-#    st.sidebar.image(str(logo_path), width=200, caption="")
 # ─── Ticker_to_region ──────────────────────────────────────────────────
 def ticker_to_region(ticker: str) -> str:
     parts = ticker.split(".")
@@ -147,6 +140,7 @@ def ticker_to_region(ticker: str) -> str:
     return region_map.get(suffix, "US")
 
 st.session_state.pop("ff5", None)
+
 # Silence only the "'M' is deprecated" FutureWarning from pandas
 warnings.filterwarnings(
     "ignore",
@@ -220,7 +214,9 @@ def grab_series(xlsx: Path, sheet: str, regex: str):
         return None
     row = df.loc[mask, :].iloc[0]
     return pd.to_numeric(row.iloc[COLS], errors="coerce").tolist()
+
 ##### CAPM END #####
+
 @st.cache_data
 def build_dataset():
     base = Path(__file__).parent
@@ -292,6 +288,7 @@ def build_dataset():
 
         # ── Grab Sales ─────────────────────────────────────────────────────────
         #----Matches row 21: "Sales of Goods & Services – Net – Unclassified"
+
 ##### NWC START #####       
         sales = grab_series(xlsx, "Income Statement", r"sales of goods & services\s*-\s*net")
         shares_outstanding = grab_series(xlsx, "Balance Sheet", r"common shares.*outstanding.*total")
@@ -301,7 +298,7 @@ def build_dataset():
             change_in_nwc = [0] + [nwc[i] - nwc[i-1] for i in range(1, len(nwc))]
         else:
             change_in_nwc = [0] * len(years)
-##### NWC STOP #####
+##### NWC END #####
         # Pull interest (IS first, then CF)
         ie_is = grab_series(xlsx, "Income Statement", r"interest expense|finance costs")
         ie_cf = grab_series(xlsx, "Cash Flow",        r"interest\s*paid")
@@ -369,6 +366,7 @@ def build_dataset():
   - df["ΔCash"]
 )
 ##### FCFE END #####
+
     # ── Free Cash Flow (FCF) including ΔNWC ────────────────────────────
     df["FCF"] = (
     df["EBITDA"]
@@ -404,9 +402,6 @@ st.session_state["drivers"] = drivers
 tickers     = sorted(df["Ticker"].unique())
 sel_tickers = st.sidebar.multiselect("🔎 Companies", options=tickers, default=[])
 
-#st.cache_data.clear() #<-- Clear cache every time I add/remove stocks for calculations consistency while running llm simulations
-
-##########################
 # --- Conditional cache clear: only when adding/removing stocks and list is not empty ---
 if "prev_sel_tickers" in st.session_state:
     prev = set(st.session_state.prev_sel_tickers)
@@ -418,8 +413,6 @@ else:
     if sel_tickers:  # First run with non-empty list
         st.cache_data.clear()
 
-##########################
-
 
 for ticker in sel_tickers:
     # slice out only the historical rows for that ticker
@@ -428,14 +421,12 @@ for ticker in sel_tickers:
     # Temporarily skip FCFF calculation until I implement the simple version
     fcff_series = pd.Series(dtype=float, name='FCFF')
 
-    # Now fcff_series has indices ..., 2026, and "Terminal Value"
-    #st.write(f"### {ticker} FCFF + Terminal Value")
-    #st.dataframe(fcff_series)
 
 if "prev_sel_tickers" not in st.session_state:
     st.session_state.prev_sel_tickers = sel_tickers.copy()
 
 # Figure out which tickers were just removed:
+
 # ─── Remove any state for tickers that were just un‐selected ─────────────────
 removed = set(st.session_state.prev_sel_tickers) - set(sel_tickers)
 if removed:
@@ -447,7 +438,9 @@ if removed:
         ):
             if key in st.session_state:
                 st.session_state[key].pop(t, None)
+
 # Purge those tickers out of your Damodaran history list
+
     st.session_state["damo_history"] = [
         entry for entry in st.session_state.get("damo_history", [])
         if entry and entry[0] not in removed
@@ -504,7 +497,6 @@ st.sidebar.markdown(
     "Move the slider down to see their multiples."
 )
 
-
 # ─── 3a) Choose Estimation Methods ─────────────────────────────────────────────
 st.sidebar.markdown(
     """
@@ -513,8 +505,6 @@ st.sidebar.markdown(
     """,
     unsafe_allow_html=True
 )
-
-
 
 methods = st.sidebar.multiselect(
     label="",
@@ -533,7 +523,9 @@ if "Damo α" in methods:
 #     })
 
 ###################### Damodaran Betas ########################
+
 ##### DAMODARAN START #####
+
 # — Pre-load Damodaran betas for each region, but cache locally —
 damo_files: dict[str,str] = {}
 for reg in ("US", "Europe", "AU_NZ"):
@@ -614,6 +606,7 @@ if damo_betas:
         beta_slot.success(f"{last_tkr} β = {last_beta:.2f}")
     else:
         beta_slot.write(f"{last_tkr} β = n/a")
+
 ##### DAMODARAN END #####
 
 # — Trimmed table: only Ticker, Industry, and β —
@@ -713,9 +706,8 @@ with tab_main:
         ph_ff5 = st.sidebar.empty()
         ph_ff5.markdown("#### 🔢 Auto‑Updating FF‑5 Factors")
         
-        
-       
-        # Auto-fetch FF-5 data when method is selected
+    # Auto-fetch FF-5 data when method is selected
+
         ff5_results: dict[str, pd.DataFrame] = {}
         for ticker in sel_tickers:
             folder = ticker_to_region(ticker)
@@ -798,7 +790,8 @@ with tab_main:
                 mktprem_annual = (1 + monthly_mktrf) ** 12 - 1
 
 ##### BETAS START #####
-    # 2) Compute fresh betas & regression errors
+
+# 2) Compute fresh betas & regression errors
                 betas_by_ticker  = {}
                 errors_by_ticker = {}
                 for ticker, ff5_df in ff5_dict.items():
@@ -821,7 +814,7 @@ with tab_main:
                         "alpha":     res["alpha"],
                     }
 
-    # 3) Store in session
+# 3) Store in session
                 st.session_state["ff5_betas"]  = betas_by_ticker
                 st.session_state["ff5_errors"] = errors_by_ticker
 
@@ -831,9 +824,9 @@ with tab_main:
                 last_year   = st.session_state.get("last_year_wacc")
                 do_message  = (last_year is not None and last_year != sel_year)
 
-    # ——————————————————————————————————————————————————————————————————————————————
-    # 3 Pure CAPM regression + FF-5 residuals time series
-    # ——————————————————————————————————————————————————————————————————————————————
+# ——————————————————————————————————————————————————————————————————————————————
+# 3 Pure CAPM regression + FF-5 residuals time series
+# ——————————————————————————————————————————————————————————————————————————————
 
 ##### CAPM START #####
 
@@ -900,7 +893,7 @@ with tab_main:
                 except Exception as e:
                     st.sidebar.error(f"❌ {ticker}: {e}")
 
-        # 3) Cache into session_state
+    # 3) Cache into session_state
             st.session_state["stock_returns"] = stock_rets
             st.session_state["capm_results"]  = capm_results
             st.session_state["capm_ran"]      = True
@@ -911,7 +904,7 @@ with tab_main:
                 # Clear the “Auto-Updating Pure–CAPM Regression” banner
                 time.sleep(5)
                 ph.empty()
-        # ─── NOW grab the FF-5 factors behind your risk-free & market prem
+    # ─── NOW grab the FF-5 factors behind your risk-free & market prem
             if "ff5" not in st.session_state:
                 ff5_results = {}
                 for ticker in sel_tickers:
@@ -1021,8 +1014,8 @@ with tab_main:
         st.write(sim["ChangeNWC"].tolist())
 
 
+# Keep the historical cash taxes constant unless you add a slider for it
 
-    # Keep the historical cash taxes constant unless you add a slider for it
     sim["CashTaxesPaid"]  = base["CashTaxesPaid"]
 
     # 1) Recalc OCF = EBITDA – CashTaxesPaid – ΔNWC (ΔNWC still zero in this simple sim)
@@ -1033,8 +1026,10 @@ with tab_main:
     #st.write("🔍 sim FCF after NWC adj:", sim["FCF"].tolist())
     with st.expander("🔍 sim FCF after NWC adj:", expanded=False):
         st.write(sim["FCF"].tolist())
+
 ##### EV/EBITDA START #####
-    # 3) EV and EV/EBITDA 
+
+# 3) EV and EV/EBITDA 
 
     # Recompute sim net‐debt
     sim_net_debt = sim["Debt"] - sim["Cash"]
@@ -1046,9 +1041,8 @@ with tab_main:
 
     sim["EV/EBITDA"]      = sim["EV"] / sim["EBITDA"].replace(0, pd.NA)
 
+# ─── 5) Top metrics: two‐row panels, 5 columns each ────────────────────────────
 
-
-    # ─── 5) Top metrics: two‐row panels, 5 columns each ────────────────────────────
     hist_metrics = [
         ("EBITDA",    "EBITDA",         "$ {:,.0f}"),
         ("CapEx",     "CapEx",          "$ {:,.0f}"),
@@ -1272,16 +1266,7 @@ with tab_main:
 
     # ─── 8) Data Table ─────────────────────────────────────────────────────────────
     st.markdown("### 📊 Data Table")
-    #########################-------->#### Arrow Sign   ########
-    # st.markdown(
-    # """
-    # <p style="text-align:right; font-size:0.85rem; color:#888;">
-    # ⇆ <em>Slide&nbsp;→</em> to view additional financial metrics
-    # </p>
-    # """,
-    # unsafe_allow_html=True,
-    # )
-    ##########################################################      
+        
     st.dataframe(
         sim[[
             "Ticker","Year","EBITDA","CapEx",
@@ -1959,7 +1944,9 @@ with tab_main:
         # ─── Render the table (always at the bottom) ─────────────────────────────
         wacc_df = pd.DataFrame(wacc_rows).set_index("Ticker")
         st.markdown("#### 🧮 WACC by Company")
+
 ##### WACC END #####
+
         display_cols = []
         if "CAPM" in methods and capm_ran:
             display_cols += ["Re (CAPM %)", "WACC (CAPM %)"]
@@ -1972,7 +1959,7 @@ with tab_main:
 
         st.dataframe(wacc_df[display_cols])
         st.session_state["last_year_wacc"] = sel_year
-        ######################################DEBUG#########################
+
         # Calculate Intrinsic Value & Cash Flow Summary
         fcff_data = []
 
@@ -2037,6 +2024,7 @@ with tab_main:
 
             tv_map = {}
             n = 4
+            
             ###################### LLM TV calculation ####################################
             try:
                 # Get LLM projections and latest projected FCFF
