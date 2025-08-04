@@ -4,6 +4,7 @@ import streamlit as st
 from news_fetcher import get_headlines
 from stock_analysis_renderer import render_financial_analysis
 from pathlib import Path
+import pickle
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
     page_title="🚀 Starship Finance Simulator", 
@@ -25,20 +26,47 @@ if not qa_enabled:
         if key.startswith("qa_") or key in ["qa_input", "qa_run"]:
             del st.session_state[key]
 
-
-# Route based on Q&A Toggle
+# ───────────────────────────────────────────────────────────────
+# ROUTE: Q&A Mode
 if qa_enabled:
     import sys
     from pathlib import Path
     sys.path.append(str(Path(__file__).parent / "qa_engine"))
     from qa_tab import render_qa_tab
     render_qa_tab()
-
-    # render_qa_tab()
     st.stop()  # Stop rest of app from running
 
+# ───────────────────────────────────────────────────────────────
+# 📄 REPORT GENERATOR CHECKBOX
+report_enabled = st.sidebar.checkbox("📄 Enable Report Mode", key="report_toggle")
 
+# ROUTE: Report Mode
+if report_enabled:
+    import sys
+    from pathlib import Path
+    import pickle
+    sys.path.append(str(Path(__file__).parent / "qa_engine"))
+
+    # Attempt to load selected stocks from session or file
+    if "selected_stocks" not in st.session_state or not st.session_state["selected_stocks"]:
+        try:
+            with open("selected_stocks.pkl", "rb") as f:
+                st.session_state["selected_stocks"] = pickle.load(f)
+        except Exception:
+            st.warning("⚠️ No stocks found. Please select stocks in another tab first.")
+            st.stop()
+
+    # Only now render the report
+    if st.session_state["selected_stocks"]:
+        from fin_report_tab import render_fin_report_tab
+        render_fin_report_tab(selected_stocks=st.session_state["selected_stocks"])
+    else:
+        st.warning("⚠️ You must select at least one stock in another tab first.")
+        st.stop()
+
+    
 selected_stocks = st.session_state.get("selected_stocks", [])
+
 
 # Now safe to use st.session_state and other Streamlit commands
 # Show general market headlines
@@ -69,12 +97,24 @@ if headlines:
 
         st.markdown(full_html, unsafe_allow_html=True)
 
-# Continue the rest of your app only when stocks are selected
-if selected_stocks:
-    st.markdown(f"### Selected Stocks: {', '.join(selected_stocks)}")
-    # Insert your stock analysis rendering functions here
-    render_financial_analysis(selected_stocks)
 
+# ✅ Store selected stocks early so they are accessible in other tabs
+if selected_stocks:
+    st.session_state["selected_stocks"] = selected_stocks  # <-- make it globally available ASAP
+    with open("selected_stocks.pkl", "wb") as f:
+        pickle.dump(selected_stocks, f)
+
+    # ✅ Optional Debugging Print
+    try:
+        with open("selected_stocks.pkl", "rb") as debug_f:
+            loaded_debug_stocks = pickle.load(debug_f)
+            print("✅ DEBUG = selected_stocks.pkl contents:", loaded_debug_stocks)
+    except Exception as debug_e:
+        print("❌ DEBUG - Error reading selected_stocks.pkl:", debug_e)
+
+    # ✅ Then render content
+    st.markdown(f"### ✅ Selected Stocks: {', '.join(selected_stocks)}")
+    render_financial_analysis(selected_stocks)
 
 
 # ─── Initialize our "have we run X?" flags ──────────────────────────────────
@@ -123,6 +163,9 @@ from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
 import dcf_valuation  
+
+# Folder to store persistent visual content
+os.makedirs("report_assets", exist_ok=True)
 
 # ─── Ticker_to_region ──────────────────────────────────────────────────
 def ticker_to_region(ticker: str) -> str:
@@ -633,8 +676,8 @@ if sel_tickers and any_beta:
 
 
 # — Create two tabs: Main vs Project Description —
-tabs = st.tabs(["Main", "Project Description", "Fin Report Generator"])
-tab_main, tab_desc, tab_fin_report = tabs
+tabs = st.tabs(["Main", "Project Description"])
+tab_main, tab_desc = tabs
 
 with tab_main:
     with st.expander("Show which models have run", expanded=False):
@@ -2140,7 +2183,7 @@ with tab_main:
             st.markdown(
             """
             <p style="text-align:right; font-size:0.85rem; color:#888;">
-            ⇆ <em>Slide&nbsp;→</em> to view "Implied Price / Share"
+            ⇆ <em>Slide&nbsp;→</em> to view more
             </p>
             """,
             unsafe_allow_html=True,
@@ -2233,7 +2276,4 @@ with tab_desc:
 
 
 
-with tab_fin_report:
-    render_fin_report_tab(selected_stocks)
 
-   
