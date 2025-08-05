@@ -70,6 +70,7 @@ Real Financial Data: Authentic company financials and market data
 Interactive Visualization: Dynamic charts and comparative analysis
 Professional Methodology: Industry-standard DCF implementation
 AI-Powered Insights: Intelligent cash flow projections
+
 📋 Data Sources: Refinitiv
 
 Company Financials: Income statements, balance sheets, cash flow statements
