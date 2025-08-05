@@ -420,10 +420,14 @@ def find_industry_beta(industry_betas_df: pd.DataFrame, company_sector: str, com
     return None
 
 
-def calculate_wacc_with_industry_beta(market_beta: float, industry_beta: float = None, 
-                                    risk_free_rate: float = 0.03, market_premium: float = 0.06,
-                                    debt_ratio: float = 0.3, cost_of_debt: float = 0.05, 
-                                    tax_rate: float = 0.25):
+# def calculate_wacc_with_industry_beta(market_beta: float, industry_beta: float = None, 
+#                                     risk_free_rate: float = 0.03, market_premium: float = 0.06,
+#                                     debt_ratio: float = 0.3, cost_of_debt: float = 0.05, 
+#                                     tax_rate: float = 0.25):
+def calculate_wacc_with_industry_beta(market_beta: float, industry_beta: float, 
+                                    risk_free_rate: float, market_premium: float,
+                                    debt_ratio: float, cost_of_debt: float, 
+                                    tax_rate: float):
     """
     Calculate WACC using both company-specific beta and industry benchmark beta.
     
