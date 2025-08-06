@@ -1606,7 +1606,7 @@ with tab_main:
         st.plotly_chart(fig, use_container_width=True, key="beta_chart")
 
     # — (9-5) Compute & plot Damodaran α series  -----------------------
-    if sel_tickers and "Damo α" in methods:
+    if sel_tickers and "Damo" in methods:
         # Grab our saved per-ticker returns dict
         stock_returns = st.session_state.get("stock_returns", {})
 
