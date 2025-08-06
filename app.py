@@ -1829,7 +1829,7 @@ with tab_main:
                             x=filtered_series.index,
                             y=filtered_series.values,
                             mode="lines",
-                            name=name,
+                            name=f"{t} Damo α",
                             line=dict(color=color_map[ticker], dash="dashdot"),
                         ))
 
@@ -1851,7 +1851,7 @@ with tab_main:
                         x=filtered_returns.index,
                         y=filtered_returns.values,
                         mode="lines",
-                        name=f"{t} Return",
+                        name=f"{t} Returns",
                         line=dict(color=color_map[t], dash="solid"),
                         opacity=0.7
                     ))
