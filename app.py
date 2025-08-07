@@ -5,6 +5,9 @@ from news_fetcher import get_headlines
 from stock_analysis_renderer import render_financial_analysis
 from pathlib import Path
 import pickle
+import datetime
+import pandas_datareader.data as web
+
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
     page_title="🚀 Starship Finance Simulator", 
@@ -163,6 +166,31 @@ from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
 import dcf_valuation  
+
+############################# NEW IMPORTS ##########################
+@st.cache_data(ttl=3600)
+def load_rf_annual_from_fred() -> float:
+    """
+    Fetch the most recent 10-yr U.S. Treasury yield (DGS10)
+    from FRED, return as a decimal (e.g. 0.042).
+    """
+    # Define your time window—only the last day really matters
+    start = datetime.datetime.today() - datetime.timedelta(days=7)
+    end   = datetime.datetime.today()
+
+    # Pull the series
+    df = web.DataReader("DGS10", "fred", start, end)
+
+    # Get the last available value, convert percent to decimal
+    latest = df["DGS10"].dropna().iloc[-1]
+    return float(latest) / 100
+
+# ── (2) Call it (after the definition) ────────────────────────────────────
+rf_annual = load_rf_annual_from_fred()
+st.write(f"🛠️ Debug: FRED rf_annual = {rf_annual:.4f}")
+
+
+###################################################################
 
 # Folder to store persistent visual content
 os.makedirs("report_assets", exist_ok=True)
@@ -544,18 +572,24 @@ st.sidebar.markdown(
 st.sidebar.markdown(
     """
     <span>⚙️ <strong>Estimation Methods</strong></span>
-    <span style='color:gray; cursor:help;' title='When all (FF5, CAPM, Damo α) are selected, the Intrinsic Value Table will appear below.'>ℹ️</span>
+    <span style='color:gray; cursor:help;' title='When all (FF5, CAPM, Damo Alpha) are selected, the Intrinsic Value Table will appear below.'>ℹ️</span>
     """,
     unsafe_allow_html=True
 )
 
 methods = st.sidebar.multiselect(
     label="",
-    options=["Historical", "FF-5", "CAPM", "Damo α"],
+    options=["Historical", "FF-5", "CAPM", "Damo Alpha"],
     default=["Historical"],
 )
-# As soon as the user picks “Damo α”, mark it run
-if "Damo α" in methods:
+# import unicodedata
+# with st.sidebar.expander("🔍 Method Debug (click to expand)", expanded=False):
+#     st.write("🔍 methods raw:", [repr(m) for m in methods])
+#     st.write("🔍 methods norm:", [unicodedata.normalize("NFC", m).strip() for m in methods])
+
+
+# As soon as the user picks “Damo Alpha”, mark it run
+if "Damo Alpha" in methods:
     st.session_state["damo_ran"] = True
 
 # with st.expander("Show which models have run", expanded=False):
@@ -655,7 +689,7 @@ if damo_betas:
 # — Trimmed table: only Ticker, Industry, and β —
 
 # Only show the sidebar table if you have tickers selected AND at least one beta type is enabled
-any_beta = any(m in methods for m in ["FF-5", "CAPM", "Damo α"])
+any_beta = any(m in methods for m in ["FF-5", "CAPM", "Damo Alpha"])
 if sel_tickers and any_beta:
     # — Trimmed table: only Ticker, Industry, and β —
     sidebar_df = pd.DataFrame([
@@ -1347,8 +1381,9 @@ with tab_main:
         for t in sel_tickers
         if t in st.session_state.get("ff5_errors", {})
     }
-    if errors:
-        st.markdown("#### FF-5 Regression Errors")
+    if errors and "FF-5" in methods and st.session_state.get("ff5_ran", False):
+
+        st.markdown("#### 📉 FF-5 Regression Errors")
         df_err = pd.DataFrame.from_dict(errors, orient="index")
         st.dataframe(df_err.style.format({
             "r_squared": "{:.2f}",
@@ -1468,7 +1503,7 @@ with tab_main:
     )
 
     has_damo_data = (
-        "Damo α" in methods
+        "Damo Alpha" in methods
         and st.session_state.get("damo_ran", False)
         and any(damo_betas.values())
     )
@@ -1542,11 +1577,11 @@ with tab_main:
         }
         has_capm_data = "CAPM" in methods and st.session_state.get("capm_ran", False) and bool(st.session_state.get("capm_results", {}))
 
-        has_damo_data = "Damo α" in methods and st.session_state.get("damo_ran", False) and any(damo_betas.values())
+        has_damo_data = "Damo Alpha" in methods and st.session_state.get("damo_ran", False) and any(damo_betas.values())
 
         
         has_damo_data = (
-            "Damo α" in methods
+            "Damo Alpha" in methods
             and st.session_state.get("damo_ran", False)
             and any(damo_betas.values())
         )
@@ -1606,7 +1641,9 @@ with tab_main:
         st.plotly_chart(fig, use_container_width=True, key="beta_chart")
 
     # — (9-5) Compute & plot Damodaran α series  -----------------------
-    if sel_tickers and "Damo" in methods:
+    #st.write("🛠️ Debug methods selected:", methods)
+    #if sel_tickers and "Damo" in methods:
+    if sel_tickers and "Damo Alpha" in methods:
         # Grab our saved per-ticker returns dict
         stock_returns = st.session_state.get("stock_returns", {})
 
@@ -1622,6 +1659,7 @@ with tab_main:
             mkt = mkt_returns.get(region)
             if mkt is None:
                 continue
+            
 
             # Daily risk-free (assuming rf_annual defined earlier)
             rf_daily = rf_annual / 252
@@ -1641,18 +1679,54 @@ with tab_main:
             industry_resids[t] = res
 
         # Now plot them
-        if "Damo α" in methods and industry_resids:
-            st.markdown("#### 🏭 Damodaran-Model α")
-            fig_damo_alpha = go.Figure()
-            for t, resid in industry_resids.items():
-                fig_damo_alpha.add_trace(
-                    go.Scatter(
-                        x=resid.index,
-                        y=resid.values,
-                        mode="lines",
-                        name=f"{t} (Damo α)"
-                    )
+        # if "Damo Alpha" in methods and industry_resids:
+            
+        #     tickers = ", ".join(sel_tickers)
+        #     st.markdown(f"#### 🏰 {tickers} — Damodaran Model α")
+        #     fig_damo_alpha = go.Figure()
+        #     for t, resid in industry_resids.items():
+        #         fig_damo_alpha.add_trace(
+        #             go.Scatter(
+        #                 x=resid.index,
+        #                 y=resid.values,
+        #                 mode="lines",
+        #                 line=dict(dash="dashdot", width=2),
+        #                 name=f"{t} (Damo Alpha)"
+        #             )
+        #         )
+        # ── (9-5) Compute & plot Damodaran α series ───────────────────────────────
+        if sel_tickers and "Damo Alpha" in methods:
+            # assemble your residuals dict (you already have this above)
+            # … assume industry_resids: dict[str, pd.Series] is populated …
+
+            # Only plot if there is at least one series
+            if industry_resids:
+                # 1) Header with all tickers
+                tickers = ", ".join(industry_resids.keys())
+                st.markdown(f"#### 🏰 {tickers} — Damodaran α")
+
+                # 2) Build figure, one trace per ticker
+                fig_damo_alpha = go.Figure()
+                for t, resid in industry_resids.items():
+                    fig_damo_alpha.add_trace(go.Scatter(
+                        x    = resid.index,
+                        y    = resid.values,
+                        mode = "lines",
+                        name = f"{t} (Damo α)",          # ← Greek alpha in legend
+                        line = dict(dash="dashdot", width=2),
+                    ))
+
+                # 3) Zoom to your slider range
+                fig_damo_alpha.update_layout(
+                    xaxis        = dict(range=[f"{alpha_start}-01", f"{alpha_end}-12"]),
+                    height       = 350,
+                    legend_title = "Ticker & Model",
                 )
+
+                # # 4) Render it and persist for the combined chart
+                # st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart1")
+                # st.session_state["damo_resids"] = industry_resids
+
 
             # Zoom into the date-range chosen by your α slider
             fig_damo_alpha.update_layout(
@@ -1661,7 +1735,7 @@ with tab_main:
                 legend_title="Ticker & Model"
             )
 
-            st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart")
+            st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart2")
             # ─── Persist these for the combined chart ─────────────────
             st.session_state["damo_resids"] = industry_resids
 
@@ -1709,8 +1783,8 @@ with tab_main:
 
 
             # 3) If CAPM ran, plot CAPM alpha (solid)
-            st.write("capm_ran =", st.session_state.get("capm_ran"))
-            st.write("resids keys:", list(st.session_state.get("capm_resids", {}).keys()))
+            # st.write("capm_ran =", st.session_state.get("capm_ran"))
+            # st.write("resids keys:", list(st.session_state.get("capm_resids", {}).keys()))
 
 
             if st.session_state.get("capm_ran", False):
@@ -1745,7 +1819,10 @@ with tab_main:
                 else:
                     st.sidebar.error(f"Missing returns file for {ticker}: {fn}")
         st.session_state["stock_returns"] = stock_rets
-
+           
+        
+                
+        # if any([ff5_ran, capm_ran, damo_ran]):
         st.markdown("#### 📈 Model Residuals (Alphas) Over Time vs Returns")  
         # 1) Build one dict of all residual Series
         alpha_dict: dict[str, pd.Series] = {}
@@ -1759,7 +1836,7 @@ with tab_main:
             alpha_dict.update(st.session_state["capm_resids"])
 
         # Damodaran - only if it was actually run
-        if "Damo α" in methods and st.session_state.get("damo_ran", False):
+        if "Damo Alpha" in methods and st.session_state.get("damo_ran", False):
             damo_resids_existing = st.session_state.get("damo_resids", {})
             alpha_dict.update(damo_resids_existing)
 
@@ -1817,7 +1894,7 @@ with tab_main:
                                 line=dict(color=color_map[t], dash="dot"),
                             ))
 
-            if model == "Damo α" and st.session_state.get("damo_ran", False):
+            if model == "Damo Alpha" and st.session_state.get("damo_ran", False):
                 damo_resids_stored = st.session_state.get("damo_resids", {})
                 for name, series in damo_resids_stored.items():
                     ticker = name.split()[0]
@@ -1829,8 +1906,9 @@ with tab_main:
                             x=filtered_series.index,
                             y=filtered_series.values,
                             mode="lines",
-                            name=f"{t} Damo α",
+                            name=f"{t} Damo Alpha",
                             line=dict(color=color_map[ticker], dash="dashdot"),
+                           
                         ))
 
         # 5) Overlay returns with same time filtering as alphas
@@ -1965,7 +2043,7 @@ with tab_main:
                     tax_rate       = row["tax_rate"],
                 )
                 if industry_beta is not None else {}
-            # if ("Damo α" in methods and industry_beta is not None) else {}
+            # if ("Damo Alpha" in methods and industry_beta is not None) else {}
             )
             re_damo   = damo_res.get("industry_wacc", {}).get("cost_of_equity")
             wacc_damo = damo_res.get("industry_wacc", {}).get("wacc")
@@ -1995,7 +2073,7 @@ with tab_main:
             display_cols += ["Re (CAPM %)", "WACC (CAPM %)"]
         if "FF-5" in methods and ff5_ran:
             display_cols += ["Re (FF5 %)",  "WACC (FF5 %)"]
-        if "Damo α" in methods and damo_ran:
+        if "Damo Alpha" in methods and damo_ran:
             display_cols += ["Re (Damo %)",  "WACC (Damo %)"]
 
         display_cols += ["Rd (%)", "wE (%)", "wD (%)"]
@@ -2162,7 +2240,7 @@ with tab_main:
 
         
         # 4) Only display table when all estimation methods are selected
-        required_methods = {"CAPM", "FF-5", "Damo α"}
+        required_methods = {"CAPM", "FF-5", "Damo Alpha"}
         if required_methods.issubset(set(methods)) and capm_ran and ff5_ran and damo_ran:
             ######################## NEW CODE #########################
 
@@ -2262,8 +2340,13 @@ with tab_main:
             st.markdown(
             """
             All figures are reported in local currency (millions) for each company.<br>
+
             *FF-5 factor betas data courtesy of the [Kenneth R. French Data Library](
             https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/index.html).*
+
+            Damodaran betas data courtesy of Prof. Aswath Damodaran, NYU Stern School of Business
+
+            https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datacurrent.html
 
             Source code at Github: https://github.com/tomektomeknyc/dcf
 
@@ -2272,7 +2355,6 @@ with tab_main:
     )
 with tab_desc:
     render_project_description_tab()
-
 
 
 
