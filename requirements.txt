@@ -16,6 +16,7 @@ scipy==1.11.4
 numpy==1.24.4
 openai
 fpdf
+pandas-datareader>=0.10.0
 
 
 
