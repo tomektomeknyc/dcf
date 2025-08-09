@@ -44,7 +44,7 @@ def extract_code_block(label: str, file_path: Path) -> str:
 
 # ─── Render Q&A Tab ───────────────────────────────────────────────────────
 def render_qa_tab():
-    st.markdown("### ❓ Q&A")
+    st.markdown("### Q&A❓")
     question = st.text_area("Ask me anything…", height=150,
                             placeholder="Enter a question, e.g. How did you calculate your WACC? Include acronyms i.e. FCFE, or LLM to get code snippets as well")
 
@@ -60,7 +60,13 @@ def render_qa_tab():
         files_to_search = {
             "APP": app_dir / "app.py",
             "FCF": app_dir / "fcf_calculations.py",
-            "DCF": app_dir / "dcf_valuation.py"
+            "DCF": app_dir / "dcf_valuation.py",
+            "CAPM":app_dir /"capm.py",
+            "NWC":app_dir /"nwc.py",
+            "FCFE": app_dir /"fcfe.py",
+            "DAMODARAN": app_dir /"damodaran.py",
+            "EV/EBITDA": app_dir / "ev_ebitda.py"
+
         }
 
         # 🔑 Map keywords to block labels
