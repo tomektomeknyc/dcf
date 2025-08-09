@@ -17,6 +17,7 @@ numpy==1.24.4
 openai
 fpdf
 pandas-datareader>=0.10.0
+yfinance>=0.2.36
 
 
 
