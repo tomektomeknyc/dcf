@@ -7,6 +7,7 @@ from pathlib import Path
 import pickle
 import datetime
 import pandas_datareader.data as web
+import fin_stat_downloader
 
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
@@ -23,6 +24,9 @@ if logo_path.exists():
 
 qa_enabled = st.sidebar.checkbox("Enable Q&A Mode", key="qa_toggle")
 
+finstat_enabled = st.sidebar.checkbox("📥 10-K Downloader", key="finstat_toggle")
+
+
 # If Q&A mode is disabled, clear Q&A-related session state
 if not qa_enabled:
     for key in list(st.session_state.keys()):
@@ -38,6 +42,12 @@ if qa_enabled:
     from qa_tab import render_qa_tab
     render_qa_tab()
     st.stop()  # Stop rest of app from running
+
+# ── ROUTE: Financials Downloader ───────────────────────────
+if finstat_enabled:
+    from fin_stat_downloader import run_fin_stat_downloader
+    run_fin_stat_downloader()
+    st.stop()
 
 # ───────────────────────────────────────────────────────────────
 # 📄 REPORT GENERATOR CHECKBOX
@@ -243,50 +253,13 @@ if "market_returns" not in st.session_state:
     st.session_state["market_returns"] = mkt_returns
 
 ##### CAPM START #####
+from capm import compute_pure_capm_beta, load_sheet, grab_series
 
-def compute_pure_capm_beta(stock_ret: pd.Series, market_ret: pd.Series) -> float:
-    """
-    Compute β = Cov(Stock, Market) / Var(Market)
-    on their overlapping dates.
-    """
-    df_combined = pd.concat(
-        [stock_ret.rename("stock"), market_ret.rename("market")],
-        axis=1,
-    ).dropna()
-    cov_sm = df_combined["stock"].cov(df_combined["market"])
-    var_m  = df_combined["market"].var()
-    return cov_sm / var_m if var_m else 0.0
-
+# Initialize session state for the last WACC year
 if "last_year_wacc" not in st.session_state:
     st.session_state["last_year_wacc"] = None
-
-
-# ─── 1) Existing loader/grabber ────────────────────────────────────────────
-YEAR_ROW = 10
-COLS     = list(range(1,16))
-
-def load_sheet(xlsx: Path, sheet: str):
-    try:
-        df = pd.read_excel(xlsx, sheet_name=sheet, header=None, engine="openpyxl")
-    except:
-        return None, None
-    if df.shape[0] <= YEAR_ROW or df.shape[1] <= max(COLS):
-        return None, None
-    years = df.iloc[YEAR_ROW, COLS].astype(int).tolist()
-    return df, years
-
-def grab_series(xlsx: Path, sheet: str, regex: str):
-    df, years = load_sheet(xlsx, sheet)
-    if df is None:
-        return None
-    col0 = df.iloc[:,0].astype(str).str.lower()
-    mask = col0.str.contains(regex, regex=True, na=False)
-    if not mask.any():
-        return None
-    row = df.loc[mask, :].iloc[0]
-    return pd.to_numeric(row.iloc[COLS], errors="coerce").tolist()
-
 ##### CAPM END #####
+
 
 @st.cache_data
 def build_dataset():
@@ -360,16 +333,28 @@ def build_dataset():
         # ── Grab Sales ─────────────────────────────────────────────────────────
         #----Matches row 21: "Sales of Goods & Services – Net – Unclassified"
 
-##### NWC START #####       
-        sales = grab_series(xlsx, "Income Statement", r"sales of goods & services\s*-\s*net")
-        shares_outstanding = grab_series(xlsx, "Balance Sheet", r"common shares.*outstanding.*total")
+              
+        # sales = grab_series(xlsx, "Income Statement", r"sales of goods & services\s*-\s*net")
+        # shares_outstanding = grab_series(xlsx, "Balance Sheet", r"common shares.*outstanding.*total")
 
-        if curr_assets and curr_liab:
-            nwc = [a - l for a, l in zip(curr_assets, curr_liab)]
-            change_in_nwc = [0] + [nwc[i] - nwc[i-1] for i in range(1, len(nwc))]
-        else:
-            change_in_nwc = [0] * len(years)
+        # if curr_assets and curr_liab:
+        #     nwc = [a - l for a, l in zip(curr_assets, curr_liab)]
+        #     change_in_nwc = [0] + [nwc[i] - nwc[i-1] for i in range(1, len(nwc))]
+        # else:
+        #     change_in_nwc = [0] * len(years)
+
+##### NWC START #####  
+        from nwc import compute_nwc_metrics
+
+        sales, shares_outstanding, change_in_nwc = compute_nwc_metrics(
+            xlsx=xlsx,
+            curr_assets=curr_assets,   # whatever you built earlier
+            curr_liab=curr_liab,
+            years=years,               # your year labels in display order
+        )
+
 ##### NWC END #####
+
         # Pull interest (IS first, then CF)
         ie_is = grab_series(xlsx, "Income Statement", r"interest expense|finance costs")
         ie_cf = grab_series(xlsx, "Cash Flow",        r"interest\s*paid")
@@ -417,7 +402,7 @@ def build_dataset():
 )
 ##### FCFF END ##### 
     
-    # After you calculate or load your historical FCFF from Excel:
+    # After I calculate or load your historical FCFF from Excel:
     #print("DEBUG FCFF HISTORICAL ADSK.O (raw Excel):")
     #print(df[df["Ticker"] == "ADSK.O"][["Year", "FCFF"]]) 
 
