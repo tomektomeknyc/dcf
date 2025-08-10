@@ -8,6 +8,9 @@ import pickle
 import datetime
 import pandas_datareader.data as web
 import fin_stat_downloader
+from fcfe import compute_fcfe
+from ev_ebitda import compute_ev_ebitda
+
 
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
@@ -200,25 +203,12 @@ rf_annual = load_rf_annual_from_fred()
 st.write(f"🛠️ Debug: FRED rf_annual = {rf_annual:.4f}")
 
 
-###################################################################
-
 # Folder to store persistent visual content
 os.makedirs("report_assets", exist_ok=True)
 
 # ─── Ticker_to_region ──────────────────────────────────────────────────
-def ticker_to_region(ticker: str) -> str:
-    parts = ticker.split(".")
-    if len(parts) == 1:
-        return "US"
-    suffix = parts[-1].upper()
-    region_map = {
-        "AX": "AU_NZ",
-        "NZ": "AU_NZ",
-        "TO": "AU_NZ",
-        "DE": "Europe",
-        "O":  "US",
-    }
-    return region_map.get(suffix, "US")
+from ticker_to_region import ticker_to_region
+#──────────────────────────────────────────────────
 
 st.session_state.pop("ff5", None)
 
@@ -402,11 +392,9 @@ def build_dataset():
 )
 ##### FCFF END ##### 
     
-    # After I calculate or load your historical FCFF from Excel:
+    # After I calculate or load  historical FCFF from Excel:
     #print("DEBUG FCFF HISTORICAL ADSK.O (raw Excel):")
     #print(df[df["Ticker"] == "ADSK.O"][["Year", "FCFF"]]) 
-
-
     # Debug: Print FCFF components for first few rows
     # print("DEBUG: FCFF Components:")
     # for i, row in df.head(3).iterrows():
@@ -415,12 +403,14 @@ def build_dataset():
 ##### FCFE START #####
 # 2) FCFE = FCFF – (InterestExpense × (1–tax_rate)) + ΔDebt – ΔCash,
 # Using the per‐row tax_rate that was built before
-    df["FCFE"] = (
-    df["FCFF"]
-  - df["InterestExpense"] * (1 - df["tax_rate"])
-  + df["ΔDebt"]
-  - df["ΔCash"]
-)
+
+    df["FCFE"] = compute_fcfe(
+        fcff=df["FCFF"],
+        interest_expense=df["InterestExpense"],
+        tax_rate=df["tax_rate"],
+        delta_debt=df["ΔDebt"],
+        delta_cash=df["ΔCash"],
+    )
 ##### FCFE END #####
 
     # ── Free Cash Flow (FCF) including ΔNWC ────────────────────────────
@@ -577,15 +567,6 @@ methods = st.sidebar.multiselect(
 if "Damo Alpha" in methods:
     st.session_state["damo_ran"] = True
 
-# with st.expander("Show which models have run", expanded=False):
-#     st.write({
-#         "ff5_run":  st.session_state["ff5_ran"],
-#         "capm_run": st.session_state["capm_ran"],
-#         "damo_run": st.session_state["damo_ran"]
-#     })
-
-###################### Damodaran Betas ########################
-
 ##### DAMODARAN START #####
 
 # — Pre-load Damodaran betas for each region, but cache locally —
@@ -603,9 +584,7 @@ st.session_state["damo_files"] = damo_files
 # Fetch & cache the industry‐beta table for the first selected ticker’s region
 
 if sel_tickers:
-    # first = sel_tickers[0]
-    # region0 = ticker_to_region(first)
-    # st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region0)
+    
 
     damo_betas = {}
     for t in sel_tickers:
@@ -712,15 +691,22 @@ with tab_main:
     # ─── Damodaran Industry Betas ────────────────────────────────
 
     # Pick the *first* selected ticker 
+
     t = sel_tickers[0]
-    region = ticker_to_region(t)
+
+    # Keep ticker_to_region() for market-returns ('US','DE','NZ','AU'),
+    # then map to Damodaran keys ('US','Europe','AU_NZ') for the beta sheet.
+    folder_code = ticker_to_region(t)              # 'US' | 'DE' | 'NZ' | 'AU'
+    region_key  = map_folder_to_region(folder_code)  # 'US' | 'Europe' | 'AU_NZ'
+
     industry = ticker_industry_map.get(t)
 
+    # Fetch & cache; don't clobber a good df with an empty one
+    _df = fetch_damodaran_industry_betas(region_key)
+    if not _df.empty:
+        st.session_state["damo_industry_df"] = _df
 
-    # Fetch the right region‐sheet and store in session_state
-    st.session_state["damo_industry_df"] = fetch_damodaran_industry_betas(region)
-    damo_df = st.session_state["damo_industry_df"]
-
+    damo_df = st.session_state.get("damo_industry_df", pd.DataFrame())
 
 
     if industry is None:
@@ -1091,32 +1077,13 @@ with tab_main:
 
 ##### EV/EBITDA START #####
 
-# 3) EV and EV/EBITDA 
+# sim, ev_mult, hist_net_debt must already be defined
+    sim, hist_metrics = compute_ev_ebitda(
+        sim=sim,
+        ev_mult=ev_mult,
+        hist_net_debt=hist_net_debt,
+    )
 
-    # Recompute sim net‐debt
-    sim_net_debt = sim["Debt"] - sim["Cash"]
-
-    # EV = EBITDA × unlevered‐multiple + change in net debt
-    sim["EV"] = sim["EBITDA"] * ev_mult + (sim_net_debt - hist_net_debt)
-
-    # sim["EV"] = sim["EBITDA"] * ev_mult
-
-    sim["EV/EBITDA"]      = sim["EV"] / sim["EBITDA"].replace(0, pd.NA)
-
-# ─── 5) Top metrics: two‐row panels, 5 columns each ────────────────────────────
-
-    hist_metrics = [
-        ("EBITDA",    "EBITDA",         "$ {:,.0f}"),
-        ("CapEx",     "CapEx",          "$ {:,.0f}"),
-        ("FCF",       "FCF",            "$ {:,.0f}"),
-        ("EV",        "EV",             "$ {:,.0f}"),
-        ("EV/EBITDA", "EV/EBITDA",      "{:.2f}x"),
-        ("Debt",      "Debt",           "$ {:,.0f}"),
-        ("Cash",      "Cash",           "$ {:,.0f}"),
-        ("ΔNWC",      "ChangeNWC",      "$ {:,.0f}"),
-        ("Interest",  "InterestExpense","$ {:,.0f}"),
-        ("Tax Rate",  "tax_rate",    "{:.1%}"), 
-    ]
 ##### EV/EBITDA END #####
 
     # First 5 always go on row 1, next 4 on row 2 (with one blank placeholder)
@@ -1327,7 +1294,7 @@ with tab_main:
     st.plotly_chart(fig2, use_container_width=True, key="ev_cube_chart2")
 
     # ─── 8) Data Table ─────────────────────────────────────────────────────────────
-    st.markdown("### 📊 Data Table")
+    st.markdown("### 📊 Data Table - Simulated")
         
     st.dataframe(
         sim[[
@@ -1515,6 +1482,7 @@ with tab_main:
 
         # Calculate CAPM for each selected ticker
         mkt_returns = st.session_state.get("market_returns", {})
+        
         for ticker in sel_tickers:
             if ticker not in st.session_state.get("capm_results", {}):
                 if ticker in st.session_state.get("stock_returns", {}):
@@ -1532,13 +1500,14 @@ with tab_main:
                             capm_dict = compute_capm_beta(stock_ret, ff5_data)
                             st.session_state["capm_results"][ticker] = capm_dict
                             st.session_state["capm_ran"] = True # New stocks will have Alphas graphed
+                            st.session_state.setdefault("capm_resids", {}) 
 
                             
                             # Create proper residuals Series with dates
                             if "residuals" in capm_dict and "dates" in capm_dict:
                                 dates = pd.to_datetime(capm_dict["dates"])
                                 residuals_series = pd.Series(capm_dict["residuals"], index=dates)
-                                st.session_state["capm_resids"][ticker] = residuals_series
+                                st.session_state["capm_resids"][ticker] = residuals_series.copy()
                                 st.sidebar.success(f"✅ CAPM residuals stored for {ticker}: {len(residuals_series)} points")
                             else:
                                 st.sidebar.warning(f"⚠️ CAPM dict missing residuals/dates for {ticker}: {list(capm_dict.keys())}")
@@ -1547,8 +1516,17 @@ with tab_main:
                             # Fallback: just calculate beta without residuals
                             beta = compute_pure_capm_beta(stock_ret, market_ret)
                             st.session_state["capm_results"][ticker] = {"beta": beta}
+                            st.session_state.setdefault("capm_resids", {}).pop(ticker, None)  # ensure no stale series
+       
 
         st.session_state["capm_ran"] = True
+        # Keep CAPM residuals in sync with current selection
+        if "capm_resids" in st.session_state:
+            sel_set = set(sel_tickers)
+            st.session_state["capm_resids"] = {
+                t: s for t, s in st.session_state["capm_resids"].items() if t in sel_set
+            }
+
 
         # Debug: Show what we have in CAPM residuals
         #st.sidebar.write(f"DEBUG: CAPM residuals keys: {list(st.session_state.get('capm_resids', {}).keys())}")
@@ -1663,22 +1641,7 @@ with tab_main:
             )
             industry_resids[t] = res
 
-        # Now plot them
-        # if "Damo Alpha" in methods and industry_resids:
-            
-        #     tickers = ", ".join(sel_tickers)
-        #     st.markdown(f"#### 🏰 {tickers} — Damodaran Model α")
-        #     fig_damo_alpha = go.Figure()
-        #     for t, resid in industry_resids.items():
-        #         fig_damo_alpha.add_trace(
-        #             go.Scatter(
-        #                 x=resid.index,
-        #                 y=resid.values,
-        #                 mode="lines",
-        #                 line=dict(dash="dashdot", width=2),
-        #                 name=f"{t} (Damo Alpha)"
-        #             )
-        #         )
+        
         # ── (9-5) Compute & plot Damodaran α series ───────────────────────────────
         if sel_tickers and "Damo Alpha" in methods:
             # assemble your residuals dict (you already have this above)
@@ -1708,21 +1671,12 @@ with tab_main:
                     legend_title = "Ticker & Model",
                 )
 
-                # # 4) Render it and persist for the combined chart
-                # st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart1")
-                # st.session_state["damo_resids"] = industry_resids
-
-
-            # Zoom into the date-range chosen by your α slider
-            fig_damo_alpha.update_layout(
-                xaxis=dict(range=[f"{alpha_start}-01", f"{alpha_end}-12"]),
-                height=350,
-                legend_title="Ticker & Model"
-            )
-
-            st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart2")
-            # ─── Persist these for the combined chart ─────────────────
-            st.session_state["damo_resids"] = industry_resids
+            # # 4) Render it and persist for the combined chart
+                st.plotly_chart(fig_damo_alpha, use_container_width=True, key="damo_alpha_chart1")
+                #st.session_state["damo_resids"] = industry_resids
+                
+                # persist only current selection, as fresh copies
+                st.session_state["damo_resids"] = {t: s.copy() for t, s in industry_resids.items()}
 
 
     # — 11) Plot FF-5 residuals (pure α) over time ——————————
@@ -1845,6 +1799,7 @@ with tab_main:
         # 4) Plot all traces in the *sidebar order* of methods
         fig = go.Figure()
         for model in methods:
+
             if model == "FF-5" and st.session_state.get("ff5_ran", False):
                 ff5_resids = st.session_state.get("ff5_resids", {})
                 for t in sel_tickers:
@@ -1883,6 +1838,9 @@ with tab_main:
                 damo_resids_stored = st.session_state.get("damo_resids", {})
                 for name, series in damo_resids_stored.items():
                     ticker = name.split()[0]
+                    if ticker not in sel_tickers:
+                       continue
+
                     # Apply time filtering to Damodaran data too
                     series.index = pd.to_datetime(series.index)
                     filtered_series = series.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
@@ -1891,7 +1849,8 @@ with tab_main:
                             x=filtered_series.index,
                             y=filtered_series.values,
                             mode="lines",
-                            name=f"{t} Damo Alpha",
+                            # name=f"{t} Damo Alpha",
+                            name=f"{ticker} Damo Alpha",
                             line=dict(color=color_map[ticker], dash="dashdot"),
                            
                         ))
@@ -2223,11 +2182,10 @@ with tab_main:
             ) if pd.notna(shares_series.get(t, pd.NA)) and shares_series.get(t, pd.NA) != 0 else pd.NA
         )
 
-        
         # 4) Only display table when all estimation methods are selected
         required_methods = {"CAPM", "FF-5", "Damo Alpha"}
         if required_methods.issubset(set(methods)) and capm_ran and ff5_ran and damo_ran:
-            ######################## NEW CODE #########################
+           
 
             selected_set = set(sel_tickers)
             dcf_valuation.all_debugs = {k: v for k, v in dcf_valuation.all_debugs.items() if k in selected_set}
