@@ -18,6 +18,30 @@ st.set_page_config(
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
+st.markdown(
+    """
+    <style>
+      /* Hint box next to the sidebar toggle button */
+      .unfold-hint {
+        position: fixed;
+        top: 60px;    /* move it higher */
+        left: 8px;    /* same horizontal position as the chevron */
+        background: rgba(0, 191, 255, 0.9);
+        color: white;
+        padding: 2px 6px;     /* smaller padding */
+        border-radius: 4px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;   /* slightly smaller text */
+        z-index: 1000;
+        pointer-events: none;
+      }
+    </style>
+    <div class="unfold-hint">
+      <i class="bi bi-sliders"></i> Unfold
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Show Massey logo at the top of the sidebar
 logo_path = Path(__file__).parent / "attached_assets" / "logo.png"  
