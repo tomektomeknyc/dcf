@@ -1809,6 +1809,22 @@ with tab_main:
         df_alpha.index.name = "Date"
         df_alpha = df_alpha.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
 
+        # ➜ ADD: Load 4 market index returns (daily) → monthly, clip to slider, append
+        mkt_daily = pd.concat(
+            {
+                f"{p.stem.split('_')[0]} Index": pd.read_csv(p, index_col=0, parse_dates=True)["MarketReturn"]
+                for p in Path("attached_assets").glob("*market_returns.csv")
+            },
+            axis=1
+        )
+
+        # Convert to monthly to match alphas/returns
+        mkt_monthly = (1 + mkt_daily).resample("M").prod() - 1
+        mkt_monthly.index = mkt_monthly.index.to_period("M").to_timestamp()
+        mkt_monthly = mkt_monthly.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
+
+        df_alpha = pd.concat([df_alpha, mkt_monthly], axis=1)
+
         # 3) Build monthly returns from session state
         stock_rets = st.session_state.get("stock_returns", {})
         monthly = {
@@ -1901,6 +1917,18 @@ with tab_main:
                         line=dict(color=color_map[t], dash="solid"),
                         opacity=0.7
                     ))
+        # 6) Overlay market index returns (monthly)
+        index_cols = [c for c in df_alpha.columns if c.endswith(" Index")]
+        for col in index_cols:
+            series = df_alpha[col].dropna()
+            if not series.empty:
+                fig.add_trace(go.Scatter(
+                    x=series.index,
+                    y=series.values,
+                    mode="lines",
+                    name=col,
+                    line=dict(dash="longdash")  # visually distinct from stock series
+                ))
 
         fig.update_layout(
             xaxis_title="Date",
