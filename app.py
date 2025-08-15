@@ -1786,7 +1786,9 @@ with tab_main:
         
                 
         # if any([ff5_ran, capm_ran, damo_ran]):
-        st.markdown("#### 📈 Model Residuals (Alphas) Over Time vs Returns")  
+        
+        st.markdown("#### 📈 Model Residuals (Alphas) Over Time vs Returns and Major Indexes")
+
         # 1) Build one dict of all residual Series
         alpha_dict: dict[str, pd.Series] = {}
 
