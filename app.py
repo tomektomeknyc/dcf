@@ -10,7 +10,10 @@ import pandas_datareader.data as web
 import fin_stat_downloader
 from fcfe import compute_fcfe
 from ev_ebitda import compute_ev_ebitda
-
+from db.engine import init_db
+init_db()
+from db.engine import init_db
+engine = init_db()
 
 # ─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
@@ -79,6 +82,10 @@ if finstat_enabled:
 # ───────────────────────────────────────────────────────────────
 # 📄 REPORT GENERATOR CHECKBOX
 report_enabled = st.sidebar.checkbox("📄 Enable Report Mode", key="report_toggle")
+# Excel Bridge toggle
+#bridge_enabled = st.sidebar.checkbox("📄 Use Excel Model (Bridge)", key="bridge_toggle", value=False)
+st.sidebar.checkbox("📄 Use Excel Model (Bridge)", key="use_excel_bridge", value=False)
+
 
 # ROUTE: Report Mode
 if report_enabled:
@@ -180,6 +187,9 @@ from fetch_damodaran_betas import (
     map_folder_to_region, 
 )
 from project_description_tab import render_project_description_tab
+# Risk & Hedging UI
+
+
 import plotly.express as px
 
 from scrape_ff5 import get_ff5_data_by_folder
@@ -199,11 +209,24 @@ from ticker_to_industry import ticker_industry_map
 from metrics import compute_driver_metrics
 from fcf_calculations import compute_fcff 
 from dcf_valuation import calculate_all_intrinsic_values, generate_fcff_projections
-from project_description_tab import render_project_description_tab
+#from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
 import dcf_valuation  
+############################# EXCEL BRIDGE #########################
+# ── Excel Bridge (pulls from your Excel models via named ranges) ───────────────
+import yaml
+from excel_bridge import load_bridge_for  
+from bridge_adapter import load_sources
+# Load bridge source metadata once
+with open("sources.yaml", "r") as _f:
+    BRIDGE_SOURCES = yaml.safe_load(_f).get("tickers", {})
 
+# Session bucket for loaded bridge payloads
+if "bridge_payloads" not in st.session_state:
+    st.session_state["bridge_payloads"] = {}  # dict keyed by ticker -> payload
+
+############################.  EXCEL BRIDGE END. ###################
 ############################# NEW IMPORTS ##########################
 @st.cache_data(ttl=3600)
 def load_rf_annual_from_fred() -> float:
@@ -470,7 +493,33 @@ st.session_state["drivers"] = drivers
 
 # ─── 3) Sidebar: selectors & sliders ─────────────────────────────────────────────
 tickers     = sorted(df["Ticker"].unique())
+######################### EXCEL BRIDGE ####################
+if st.session_state.get("use_excel_bridge"):
+     extra = [t for t in BRIDGE_SOURCES.keys() if t not in tickers]
+     tickers = list(tickers) + extra
+
+
+
+###########################################################
 sel_tickers = st.sidebar.multiselect("🔎 Companies", options=tickers, default=[])
+########################. EXCEL BRIDGE ####################
+# Load Excel Bridge payloads for selected tickers (if toggle is on)
+
+
+
+if st.session_state.get("use_excel_bridge"):  # match your checkbox's key
+    sources = load_sources()
+    st.session_state["bridge_payloads"] = {}
+    for t in sel_tickers:
+        try:
+            st.session_state["bridge_payloads"][t] = load_bridge_for(t, sources)
+        except Exception as e:
+            st.warning(f"Excel bridge not available for {t}: {e}")
+else:
+    st.session_state["bridge_payloads"] = {}
+
+
+##########################################################
 
 # --- Conditional cache clear: only when adding/removing stocks and list is not empty ---
 if "prev_sel_tickers" in st.session_state:
@@ -487,6 +536,49 @@ else:
 for ticker in sel_tickers:
     # slice out only the historical rows for that ticker
     df_is = df[df["Ticker"] == ticker].set_index("Year")
+
+    #########################. EXCEL BRIDGE ########################
+    # ---- Excel Bridge: show inputs pulled from the Excel model (if available) ----
+    if "bridge_payloads" in st.session_state:
+        bridge = st.session_state["bridge_payloads"].get(ticker)
+        if bridge:
+            scalars = bridge.get("scalars", {})       # BR_WACC, BR_RF, BR_RD, BR_TAX, BR_G_LT, BR_SHARES, BR_CURRENCY...
+            tables  = bridge.get("tables", {})        # e.g., tables["BR_FCFF_hist"]
+
+            with st.expander("📄 Excel Bridge inputs", expanded=False):
+                c1, c2 = st.columns([1, 2])
+                with c1:
+                    st.markdown("**Scalars (from Excel)**")
+                    st.table({
+                        "WACC":   [scalars.get("BR_WACC")],
+                        "Rf":     [scalars.get("BR_RF")],
+                        "Rd":     [scalars.get("BR_RD")],
+                        "Tax":    [scalars.get("BR_TAX")],
+                        "g (LT)": [scalars.get("BR_G_LT")],
+                        "Shares": [scalars.get("BR_SHARES")],
+                        "CCY":    [scalars.get("BR_CURRENCY")],
+                    })
+                    st.caption(f"Source: {bridge.get('path')}")
+
+                with c2:
+                    if "BR_FCFF_hist" in tables:
+                        st.markdown("**FCFF history (from Excel)**")
+                        st.dataframe(tables["BR_FCFF_hist"], use_container_width=True)
+
+            # OPTIONAL: stash overrides for later use in WACC/DCF (disabled by default)
+            # st.session_state.setdefault("bridge_overrides", {})[ticker] = {
+            #     "rf": scalars.get("BR_RF"),
+            #     "rd": scalars.get("BR_RD"),
+            #     "tax": scalars.get("BR_TAX"),
+            #     "wacc": scalars.get("BR_WACC"),
+            #     "g_lt": scalars.get("BR_G_LT"),
+            #     "shares": scalars.get("BR_SHARES"),
+            #     "fcff_hist": tables.get("BR_FCFF_hist"),
+            # }
+
+
+
+################################################################
     
     # Temporarily skip FCFF calculation until I implement the simple version
     fcff_series = pd.Series(dtype=float, name='FCFF')
@@ -542,6 +634,21 @@ years_sorted = sorted(int(y) for y in years_avail if str(y).isdigit())
 if not years_sorted:
     st.sidebar.error("No years available for the selected companies.")
     st.stop()
+
+##################################### RISK HEDGING TOGGLE GOES HERE ##########################################################
+# ── Sidebar toggle for Risk & Hedging ─────────────────────────
+st.sidebar.markdown("### ⚙️ Risk & Hedging")
+st.sidebar.checkbox(
+    "Enable Risk & Hedging",
+    value=False,
+    key="risk_hedge_enable",
+    help="Turn on the hedge ratio & variance analysis UI"
+)
+
+
+
+
+#############################################################################################################################
 
 # ─── 1) Single-year selector for all your point-in-time metrics ───────────────
 sel_year = st.sidebar.slider(
@@ -1109,7 +1216,7 @@ with tab_main:
     )
 
 ##### EV/EBITDA END #####
-
+   
     # First 5 always go on row 1, next 4 on row 2 (with one blank placeholder)
     #Two rows of 5 metrics each
     first5 = hist_metrics[:5]
@@ -1788,7 +1895,6 @@ with tab_main:
         # if any([ff5_ran, capm_ran, damo_ran]):
         
         st.markdown("#### 📈 Model Residuals (Alphas) Over Time vs Returns and Major Indexes")
-
         # 1) Build one dict of all residual Series
         alpha_dict: dict[str, pd.Series] = {}
 
@@ -1797,8 +1903,13 @@ with tab_main:
             alpha_dict.update(st.session_state["ff5_resids"])
 
         # CAPM
-        if "CAPM" in methods and st.session_state.get("capm_ran", False):
-            alpha_dict.update(st.session_state["capm_resids"])
+        # if "CAPM" in methods and st.session_state.get("capm_ran", False):
+        #     alpha_dict.update(st.session_state["capm_resids"])
+        # CAPM (robust): include if results exist
+        _capm = st.session_state.get("capm_resids") or {}
+        if isinstance(_capm, dict) and _capm:
+            alpha_dict.update(_capm)
+
 
         # Damodaran - only if it was actually run
         if "Damo Alpha" in methods and st.session_state.get("damo_ran", False):
@@ -1810,8 +1921,8 @@ with tab_main:
         df_alpha.index = pd.to_datetime(df_alpha.index)
         df_alpha.index.name = "Date"
         df_alpha = df_alpha.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
-
-        # ➜ ADD: Load 4 market index returns (daily) → monthly, clip to slider, append
+##############################################
+# ➜ ADD: Load 4 market index returns (daily) → monthly, clip to slider, append
         mkt_daily = pd.concat(
             {
                 f"{p.stem.split('_')[0]} Index": pd.read_csv(p, index_col=0, parse_dates=True)["MarketReturn"]
@@ -1826,6 +1937,8 @@ with tab_main:
         mkt_monthly = mkt_monthly.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
 
         df_alpha = pd.concat([df_alpha, mkt_monthly], axis=1)
+##############################################
+
 
         # 3) Build monthly returns from session state
         stock_rets = st.session_state.get("stock_returns", {})
@@ -1919,6 +2032,8 @@ with tab_main:
                         line=dict(color=color_map[t], dash="solid"),
                         opacity=0.7
                     ))
+        ############################
+       
         # 6) Overlay market index returns (monthly)
         index_cols = [c for c in df_alpha.columns if c.endswith(" Index")]
         for col in index_cols:
@@ -1932,6 +2047,9 @@ with tab_main:
                     line=dict(dash="longdash")  # visually distinct from stock series
                 ))
 
+
+
+        ############################
         fig.update_layout(
             xaxis_title="Date",
             yaxis_title="Value",
@@ -2078,6 +2196,152 @@ with tab_main:
 
         st.dataframe(wacc_df[display_cols])
         st.session_state["last_year_wacc"] = sel_year
+#################################################### HEDGE CODE HERE ####################################################################
+     
+# 📉 Risk & Hedging — scrollable panels + one combined plot + single prompt/calculus
+# ─────────────────────────────────────────────────────────────
+        if st.session_state.get("risk_hedge_enable", False):
+
+            returns_dict = st.session_state.get("stock_returns", {})
+            market_rets  = st.session_state.get("market_returns", {})
+
+            import numpy as np, pandas as pd, plotly.graph_objects as go
+            from risk_hedge import hedge_variance_curve, compute_hedge_stats
+            from hedge_prompt import build_hedge_investor_prompt
+
+            # Grid for combined V(h) plot
+            h_min, h_max, h_points = -1.5, 1.5, 201
+            h_grid = np.linspace(h_min, h_max, h_points)
+
+            combined_curves: list[pd.DataFrame] = []    # each: columns = ["h","V(h)","Ticker"]
+            #prompt_lines: list[str] = []               # accumulate summary lines for 1 prompt
+            prompt_blocks: list[str] = []               # accumulate full prompts for all tickers
+
+
+            st.markdown("### 📉 Risk & Hedging Analysis")
+
+            # — Scrollable per-ticker panels (open/close as you like)
+            with st.expander("Per-ticker hedging panels", expanded=False):
+                # Dynamic height: 150px per ticker, minimum 200, maximum 800
+                dyn_height = max(200, min(150 * len(sel_tickers), 800))
+                with st.container(height=dyn_height):
+                #with st.container(height=600):
+                    for t in sel_tickers:
+                        spot_ret = returns_dict.get(t)
+                        if spot_ret is None or len(spot_ret) < 2:
+                            st.warning(f"No returns available for {t}")
+                            continue
+
+                        # Choose hedge proxy (one selector per ticker)
+                        proxy_key = None
+                        futures_ret = None
+                        if isinstance(market_rets, dict) and len(market_rets) > 0:
+                            proxy_key = st.selectbox(
+                                f"Proxy for **{t}**",
+                                list(market_rets.keys()),
+                                key=f"hedge_proxy_{t}",
+                            )
+                            futures_ret = market_rets.get(proxy_key)
+
+                        # Fallback to self-proxy if no market proxy data
+                        if futures_ret is None or len(futures_ret) < 2:
+                            st.warning(f"No proxy returns available for {t}; using self-proxy.")
+                            proxy_key  = f"{t} (self-proxy)"
+                            futures_ret = spot_ret
+
+                        # Compute stats (no plotting here)
+                        stats = compute_hedge_stats(spot_ret, futures_ret)
+
+                        # Small, clean metric row (no charts in the scroller)
+                        c1,c2,c3,c4,c5 = st.columns(5)
+                        c1.metric("σ_S", f"{stats.sigma_S:.4f}")
+                        c2.metric("σ_F", f"{stats.sigma_F:.4f}")
+                        c3.metric("ρ",   f"{stats.rho:.2f}")
+                        c4.metric("h*",  f"{stats.h_star:.3f}")
+                        dvar_pct = 0.0 if stats.var_unhedged <= 0 else 100.0*(1 - stats.var_min/stats.var_unhedged)
+                        c5.metric("ΔVar", f"{dvar_pct:.1f}%")
+
+                        st.divider()
+
+                        # Collect this ticker’s V(h) curve for the combined plot
+                        curve_df = hedge_variance_curve(spot_ret, futures_ret, h_grid)
+                        curve_df["Ticker"] = t
+                        combined_curves.append(curve_df)
+
+                        prompt_text = build_hedge_investor_prompt(
+                            asset_name=t,
+                            futures_name=proxy_key,
+                            return_freq="daily returns",
+                            sample_window="(based on overlap)",
+                            stats=stats,
+                            notional_amount=1_000_000,
+                            unit_label="contracts",
+                            fut_multiplier=1.0,
+                        )
+                        prompt_blocks.append(prompt_text)
+
+
+            # — One combined V(h) plot with legend to toggle lines on/off
+            if combined_curves:
+                all_df = pd.concat(combined_curves, ignore_index=True)
+                fig = go.Figure()
+                for t in sel_tickers:
+                    df_t = all_df[all_df["Ticker"] == t]
+                    if df_t.empty:
+                        continue
+                    fig.add_trace(go.Scatter(
+                        x=df_t["h"], y=df_t["V(h)"],
+                        mode="lines",
+                        name=t,  # legend click toggles visibility
+                        hovertemplate=f"{t}<br>h=%{{x:.3f}}<br>V(h)=%{{y:.6f}}<extra></extra>",
+                    ))
+                fig.update_layout(
+                    title="Variance vs Hedge Ratio — Combined",
+                    xaxis_title="h",
+                    yaxis_title="V(h)",
+                    legend_title="Ticker",
+                    hovermode="x unified",
+                    margin=dict(l=40, r=20, t=40, b=40),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No curves to plot.")
+
+            # — Single “Calculus breakdown (Power / 'Square' Rule)” expander
+            with st.expander("🧮 Calculus breakdown (Power / 'Square' Rule)", expanded=False):
+                st.markdown(
+                    r"""
+            - Minimize:  
+            $$ V(h) = \sigma_S^2 \;-\; 2\rho\sigma_S\sigma_F h \;+\; h^2\sigma_F^2 $$
+
+            - Derivative:  
+            $$ \frac{dV}{dh} = -2\rho\sigma_S\sigma_F \;+\; 2h\sigma_F^2 $$  
+            (power rule on \( h^2 \Rightarrow 2h \))
+
+            - Solve for optimum:  
+            $$ h^* = \frac{\rho\sigma_S}{\sigma_F} $$
+
+            - Second derivative test:  
+            $$ \frac{d^2V}{dh^2} = 2\sigma_F^2 > 0 \;\;\Rightarrow\;\; \text{minimum} $$
+                    """,
+                    unsafe_allow_html=False,
+                )
+
+
+            # — Single “Investor-ready explanation (prompt)” expander
+            if prompt_blocks:
+                with st.expander("🧾 Investor-ready explanation (prompt)", expanded=False):
+                    st.code(
+                        "\n".join([
+                            "# Investor commentary — Hedge overview",
+                            "Frequency: daily returns; window: based on overlap.",
+                            "",
+                            *prompt_blocks,
+                        ]),
+                        language="markdown",
+                    )
+
+#########################################################################################################################################
 
         # Calculate Intrinsic Value & Cash Flow Summary
         fcff_data = []
