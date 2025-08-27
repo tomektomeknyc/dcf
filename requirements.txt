@@ -18,6 +18,8 @@ openai
 fpdf
 pandas-datareader>=0.10.0
 yfinance>=0.2.36
+sqlmodel
+
 
 
 
