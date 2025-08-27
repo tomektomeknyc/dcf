@@ -1,0 +1,8 @@
+# sources.yaml
+tickers:
+  TEREPAY:
+    path: "models_excel/TerePay_DCF.xlsx"   # create later
+    type: "presentation"
+  SUPAHUMAN:
+    path: "models_excel/SupaHuman_DCF.xlsx" # create later
+    type: "presentation"
