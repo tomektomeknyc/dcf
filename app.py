@@ -2196,7 +2196,7 @@ with tab_main:
 
         st.dataframe(wacc_df[display_cols])
         st.session_state["last_year_wacc"] = sel_year
-#################################################### HEDGE CODE HERE ####################################################################
+##### RISK HEDGE START #####  
      
 # 📉 Risk & Hedging — scrollable panels + one combined plot + single prompt/calculus
 # ─────────────────────────────────────────────────────────────
@@ -2340,8 +2340,10 @@ with tab_main:
                         ]),
                         language="markdown",
                     )
+                    
+        
+##### RISK HEDGE END #####                      
 
-#########################################################################################################################################
 
         # Calculate Intrinsic Value & Cash Flow Summary
         fcff_data = []
