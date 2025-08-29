@@ -1,3 +1,4 @@
+##### RISK HEDGE START #####
 # risk_hedge.py
 # Clean utilities for hedge variance and optimal hedge ratio.
 from __future__ import annotations
@@ -66,3 +67,4 @@ def hedge_variance_curve(spot_returns: pd.Series, futures_returns: pd.Series,
 
     Vh = (sigma_S**2) - 2*h_values*rho*sigma_S*sigma_F + (h_values**2)*(sigma_F**2)
     return pd.DataFrame({"h": h_values, "V(h)": Vh})
+##### RISK HEDGE END #####
