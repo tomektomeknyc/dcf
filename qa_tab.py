@@ -65,7 +65,8 @@ def render_qa_tab():
             "NWC":app_dir /"nwc.py",
             "FCFE": app_dir /"fcfe.py",
             "DAMODARAN": app_dir /"damodaran.py",
-            "EV/EBITDA": app_dir / "ev_ebitda.py"
+            "EV/EBITDA": app_dir / "ev_ebitda.py",
+            "RISK HEDGE": app_dir /"risk_hedge.py"
 
         }
 
@@ -87,7 +88,9 @@ def render_qa_tab():
             "betas": "BETAS",
             "evebitda": "EV/EBITDA",
             "ev/ebitda": "EV/EBITDA",
-            "llm": "LLM"
+            "llm": "LLM",
+            "risk":"RISK HEDGE",
+            "hedge":"RISK HEDGE"
         }
 
         
