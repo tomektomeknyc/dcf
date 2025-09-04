@@ -6,6 +6,9 @@ from stock_analysis_renderer import render_financial_analysis
 from pathlib import Path
 import pickle
 import datetime
+from data_gatekeeper import load_stock_returns, load_index_returns
+from typing import List
+import pandas as pd
 import pandas_datareader.data as web
 import fin_stat_downloader
 from fcfe import compute_fcfe
@@ -57,13 +60,6 @@ qa_enabled = st.sidebar.checkbox("Enable Q&A Mode", key="qa_toggle")
 finstat_enabled = st.sidebar.checkbox("📥 10-K Downloader", key="finstat_toggle")
 
 
-# If Q&A mode is disabled, clear Q&A-related session state
-if not qa_enabled:
-    for key in list(st.session_state.keys()):
-        if key.startswith("qa_") or key in ["qa_input", "qa_run"]:
-            del st.session_state[key]
-
-# ───────────────────────────────────────────────────────────────
 # ROUTE: Q&A Mode
 if qa_enabled:
     import sys
@@ -173,7 +169,7 @@ if "intrinsic_computed" not in st.session_state:
     st.session_state["intrinsic_computed"] = False
 
 
-import pandas as pd
+
 # Ensure we have a place to store the Damodaran industry‐beta DataFrame
 if "damo_industry_df" not in st.session_state:
     st.session_state["damo_industry_df"] = pd.DataFrame()
@@ -187,11 +183,10 @@ from fetch_damodaran_betas import (
     map_folder_to_region, 
 )
 from project_description_tab import render_project_description_tab
+
 # Risk & Hedging UI
 
-
 import plotly.express as px
-
 from scrape_ff5 import get_ff5_data_by_folder
 import os
 import plotly.graph_objects as go
@@ -209,10 +204,10 @@ from ticker_to_industry import ticker_industry_map
 from metrics import compute_driver_metrics
 from fcf_calculations import compute_fcff 
 from dcf_valuation import calculate_all_intrinsic_values, generate_fcff_projections
-#from project_description_tab import render_project_description_tab
 from qa_tab import render_qa_tab
 from fin_report_tab import render_fin_report_tab
 import dcf_valuation  
+from connectors.aws_min import s3_put_json, s3_get_json, s3_list, s3_presigned_url
 ############################# EXCEL BRIDGE #########################
 # ── Excel Bridge (pulls from your Excel models via named ranges) ───────────────
 import yaml
@@ -227,7 +222,7 @@ if "bridge_payloads" not in st.session_state:
     st.session_state["bridge_payloads"] = {}  # dict keyed by ticker -> payload
 
 ############################.  EXCEL BRIDGE END. ###################
-############################# NEW IMPORTS ##########################
+
 @st.cache_data(ttl=3600)
 def load_rf_annual_from_fred() -> float:
     """
@@ -279,14 +274,17 @@ if "market_returns" not in st.session_state:
         "DE": ".GDAXI",   # DAX
     }
     mkt_returns: dict[str, pd.Series] = {}
+    
     for region, ric in region_indices.items():
         fname = ric.lstrip(".").replace(".", "_") + "_market_returns.csv"
         path  = os.path.join("attached_assets", fname)
+       
         if os.path.exists(path):
-            df_mkt = pd.read_csv(path, parse_dates=True, index_col=0)
-            mkt_returns[region] = df_mkt["MarketReturn"]
+           df_mkt = load_index_returns(path)                         # <- Gatekeeper
+           mkt_returns[region] = df_mkt.set_index("Date")["MarketReturn"]
         else:
             st.sidebar.warning(f"⚠️ Missing market‐returns file for {region}: {path}")
+
     st.session_state["market_returns"] = mkt_returns
 
 ##### CAPM START #####
@@ -341,9 +339,8 @@ def build_dataset():
           # Fallback to zero‐rate if either series is missing
             tax_rate_series = [0.0] * len(years)
 
-
-
         # Grab core series
+
         ebitda    = grab_series(xlsx, "Income Statement", r"earnings before.*ebitda")
         #ebit      = grab_series(xlsx, "Income Statement", r"ebit")
         ebit = grab_series(xlsx, "Income Statement", r"earnings before interest.*taxes")
@@ -498,14 +495,13 @@ if st.session_state.get("use_excel_bridge"):
      extra = [t for t in BRIDGE_SOURCES.keys() if t not in tickers]
      tickers = list(tickers) + extra
 
-
-
 ###########################################################
+
 sel_tickers = st.sidebar.multiselect("🔎 Companies", options=tickers, default=[])
+
 ########################. EXCEL BRIDGE ####################
+
 # Load Excel Bridge payloads for selected tickers (if toggle is on)
-
-
 
 if st.session_state.get("use_excel_bridge"):  # match your checkbox's key
     sources = load_sources()
@@ -644,9 +640,6 @@ st.sidebar.checkbox(
     key="risk_hedge_enable",
     help="Turn on the hedge ratio & variance analysis UI"
 )
-
-
-
 
 #############################################################################################################################
 
@@ -914,8 +907,13 @@ with tab_main:
                     continue
                 fn = f"attached_assets/returns_{ticker.replace('.', '_')}.csv"
                 if os.path.isfile(fn):
-                    df_ret = pd.read_csv(fn, parse_dates=True, index_col=0)
-                    stock_rets[ticker] = df_ret["Return"]
+                    # df_ret = pd.read_csv(fn, parse_dates=True, index_col=0)
+                    # stock_rets[ticker] = df_ret["Return"]
+                    try:
+                        df_ret = load_stock_returns(fn)   # <- Gatekeeper
+                        stock_rets[ticker] = df_ret.set_index("Date")["MarketReturn"]
+                    except ValueError as e:
+                        st.sidebar.error(f"❌ Invalid stock returns file for {ticker}: {e}")
                 else:
                     st.sidebar.error(f"Missing returns file for {ticker}: {fn}")
             st.session_state["stock_returns"] = stock_rets
@@ -1422,6 +1420,7 @@ with tab_main:
             "Ticker":"Company",
         },
     )
+    
     st.plotly_chart(fig2, use_container_width=True, key="ev_cube_chart2")
 
     # ─── 8) Data Table ─────────────────────────────────────────────────────────────
@@ -1921,15 +1920,23 @@ with tab_main:
         df_alpha.index = pd.to_datetime(df_alpha.index)
         df_alpha.index.name = "Date"
         df_alpha = df_alpha.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
-##############################################
+
 # ➜ ADD: Load 4 market index returns (daily) → monthly, clip to slider, append
+        # mkt_daily = pd.concat(
+        #     {
+        #         f"{p.stem.split('_')[0]} Index": pd.read_csv(p, index_col=0, parse_dates=True)["MarketReturn"]
+        #         for p in Path("attached_assets").glob("*market_returns.csv")
+        #     },
+        #     axis=1
+        # )
         mkt_daily = pd.concat(
             {
-                f"{p.stem.split('_')[0]} Index": pd.read_csv(p, index_col=0, parse_dates=True)["MarketReturn"]
+                f"{p.stem.split('_')[0]} Index": load_index_returns(p).set_index("Date")["MarketReturn"]
                 for p in Path("attached_assets").glob("*market_returns.csv")
             },
             axis=1
-        )
+    )
+
 
         # Convert to monthly to match alphas/returns
         mkt_monthly = (1 + mkt_daily).resample("M").prod() - 1
@@ -1937,7 +1944,7 @@ with tab_main:
         mkt_monthly = mkt_monthly.loc[f"{alpha_start}-01-01": f"{alpha_end}-12-31"]
 
         df_alpha = pd.concat([df_alpha, mkt_monthly], axis=1)
-##############################################
+
 
 
         # 3) Build monthly returns from session state
@@ -2032,7 +2039,6 @@ with tab_main:
                         line=dict(color=color_map[t], dash="solid"),
                         opacity=0.7
                     ))
-        ############################
        
         # 6) Overlay market index returns (monthly)
         index_cols = [c for c in df_alpha.columns if c.endswith(" Index")]
@@ -2047,9 +2053,6 @@ with tab_main:
                     line=dict(dash="longdash")  # visually distinct from stock series
                 ))
 
-
-
-        ############################
         fig.update_layout(
             xaxis_title="Date",
             yaxis_title="Value",
@@ -2074,12 +2077,26 @@ with tab_main:
     damo_dfs = {}
     for reg, path in st.session_state["damo_files"].items():
         ext = Path(path).suffix.lower()
-        if ext == ".xls":
-            # let Pandas use xlrd
-            damo_dfs[reg] = pd.read_excel(path, engine="xlrd")
-        else:
-            # newer workbooks, if any
-            damo_dfs[reg] = pd.read_excel(path, engine="openpyxl")
+        # if ext == ".xls":
+        #     # let Pandas use xlrd
+        #     damo_dfs[reg] = pd.read_excel(path, engine="xlrd")
+        # else:
+        #     # newer workbooks, if any
+        #     damo_dfs[reg] = pd.read_excel(path, engine="openpyxl")
+        try:
+            if ext == ".xls":
+                # old-style workbooks
+                damo_dfs[reg] = pd.read_excel(path, engine="xlrd")
+            elif ext == ".xlsx":
+                # newer workbooks
+                damo_dfs[reg] = pd.read_excel(path, engine="openpyxl")
+            else:
+                st.warning(f"Unsupported file type for {reg}: {ext}")
+                continue
+        except Exception as e:
+            st.error(f"❌ Could not read Damodaran file for {reg}: {e}")
+            continue
+
 
 
 ##### WACC START #####
@@ -2196,8 +2213,9 @@ with tab_main:
 
         st.dataframe(wacc_df[display_cols])
         st.session_state["last_year_wacc"] = sel_year
-##### RISK HEDGE START #####  
-     
+
+##### RISK HEDGE START #####     
+
 # 📉 Risk & Hedging — scrollable panels + one combined plot + single prompt/calculus
 # ─────────────────────────────────────────────────────────────
         if st.session_state.get("risk_hedge_enable", False):
@@ -2340,9 +2358,7 @@ with tab_main:
                         ]),
                         language="markdown",
                     )
-                    
-        
-##### RISK HEDGE END #####                      
+##### RISK HEDGE END #####
 
 
         # Calculate Intrinsic Value & Cash Flow Summary
