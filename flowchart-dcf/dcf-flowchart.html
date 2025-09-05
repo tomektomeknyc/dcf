@@ -1,0 +1,235 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCF-Main Flowchart (Clean)</title>
+<style>
+  body { margin:0; background:#000000; color:#e6edf3; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+  header { padding:12px 16px; border-bottom:1px solid #0a84ff; }
+  .wrap { height: calc(100vh - 54px); padding:12px; }
+  .card { height:100%; background:#000000; border:1px solid #0a84ff; border-radius:12px; overflow:auto; }
+  .mermaid { min-width:1400px; min-height:1200px; }
+  .mermaid svg { width:1800px !important; height:1600px !important; }
+</style>
+<script type="module">
+  import mermaid from "https://unpkg.com/mermaid@10/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "dark" });
+</script>
+
+<style>
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  .mermaid text {
+    fill: #ffffff !important;
+    font-weight: 500;
+  }
+</style>
+
+
+<style>
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  .mermaid text {
+    fill: #ffffff !important;
+    font-weight: 500;
+  }
+  .mermaid .cluster rect {
+    fill: #000000 !important;
+    stroke: #0a84ff !important;
+    stroke-width: 2px;
+  }
+</style>
+
+
+<style>
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  .mermaid text {
+    fill: #000000 !important;
+    font-weight: 600;
+  }
+  .mermaid .cluster rect {
+    fill: #000000 !important;
+    stroke: #0a84ff !important;
+    stroke-width: 2px;
+  }
+</style>
+
+
+<style>
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  .mermaid text {
+    fill: #000000 !important;
+    font-weight: 600;
+  }
+  .mermaid .cluster rect {
+    fill: #000000 !important;
+    stroke: #0a84ff !important;
+    stroke-width: 2px;
+  }
+  .mermaid .cluster text {
+    fill: #ffffff !important;
+    font-weight: 700;
+  }
+</style>
+
+
+<style>
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  .mermaid g.node text {
+    fill: #000000 !important;
+    font-weight: 600;
+  }
+  .mermaid .cluster rect {
+    fill: #000000 !important;
+    stroke: #0a84ff !important;
+    stroke-width: 2px;
+  }
+  .mermaid .cluster text {
+    fill: #ffffff !important;
+    font-weight: 700;
+  }
+</style>
+
+
+<style>
+  /* All rectangles (nodes) */
+  .mermaid rect {
+    fill: #0a84ff !important;
+    stroke: #ffffff !important;
+  }
+  /* Text inside normal nodes */
+  .mermaid g.node > rect + text,
+  .mermaid g.node text {
+    fill: #000000 !important;
+    font-weight: 600;
+  }
+  /* Cluster rectangles */
+  .mermaid .cluster rect {
+    fill: #000000 !important;
+    stroke: #0a84ff !important;
+    stroke-width: 2px;
+  }
+  /* Cluster titles */
+  .mermaid .cluster text {
+    fill: #ffffff !important;
+    font-weight: 700;
+  }
+</style>
+
+</head>
+<body>
+  <header><h1 style="font-size:16px;margin:0;">DCF‑Main • Clean Flowchart (Entry → UI → Engines → Data/APIs → DB/Charts)</h1></header>
+  <div class="wrap">
+    <div class="card">
+      <div class="mermaid">
+%%{init: { 'theme': 'dark', 'flowchart': { 'curve': 'basis', 'nodeSpacing': 50, 'rankSpacing': 60 } }}%%
+flowchart LR
+  %% Tiers: Entry → UI → Engines → Data/APIs → DB/Charts/Outputs
+  subgraph Entry[Entry Points]
+    app([app])
+    app_mobile_optimized([app_mobile_optimized])
+  end
+  subgraph UI_Streamlit[UI / Streamlit]
+    capm["Capm"]
+    damodaran["Damodaran"]
+    dcf_valuation["Dcf Valuation"]
+    fama_french["Fama French"]
+    fcf_calculations["Fcf Calculations"]
+    fetch_damodaran_betas["Fetch Damodaran Betas"]
+    fin_report_tab["Fin Report Tab"]
+    fin_stat_downloader["Fin Stat Downloader"]
+    project_description_tab["Project Description Tab"]
+    qa_engine.QnA["Qa Engine.Qna"]
+    qa_tab["Qa Tab"]
+    scrape_ff5["Scrape Ff5"]
+    stock_analysis_renderer["Stock Analysis Renderer"]
+    stock_returns["Stock Returns"]
+  end
+  subgraph Finance_Quant_Engine[Finance / Quant_Engine]
+    bridge_adapter["Bridge Adapter"]
+    connectors.aws_min["Connectors.Aws Min"]
+    db.engine["Db.Engine"]
+    db.models["Db.Models"]
+    ev_ebitda["Ev Ebitda"]
+    excel_bridge["Excel Bridge"]
+    fcfe["Fcfe"]
+    generate_report["Generate Report"]
+    hedge_prompt["Hedge Prompt"]
+    metrics["Metrics"]
+    news_fetcher["News Fetcher"]
+    nwc["Nwc"]
+    regression_engine["Regression Engine"]
+    scrape_damodaran["Scrape Damodaran"]
+    test_bridge["Test Bridge"]
+    wacc_engine["Wacc Engine"]
+  end
+  subgraph Data[Data]
+    data_gatekeeper["Data Gatekeeper"]
+    debug_airnz["Debug Airnz"]
+    finance_data_loader["Finance Data Loader"]
+    historical_data_extractor["Historical Data Extractor"]
+    risk_hedge["Risk Hedge"]
+  end
+  app --> bridge_adapter
+  app --> capm
+  app --> data_gatekeeper
+  app --> dcf_valuation
+  app --> ev_ebitda
+  app --> excel_bridge
+  app --> fcf_calculations
+  app --> fcfe
+  app --> fetch_damodaran_betas
+  app --> fin_report_tab
+  app --> fin_stat_downloader
+  app --> hedge_prompt
+  app --> metrics
+  app --> news_fetcher
+  app --> nwc
+  app --> project_description_tab
+  app --> qa_tab
+  app --> regression_engine
+  app --> risk_hedge
+  app --> scrape_ff5
+  app --> stock_analysis_renderer
+  app --> stock_returns
+  app_mobile_optimized --> dcf_valuation
+  app_mobile_optimized --> fcf_calculations
+  app_mobile_optimized --> fetch_damodaran_betas
+  app_mobile_optimized --> fin_report_tab
+  app_mobile_optimized --> metrics
+  app_mobile_optimized --> news_fetcher
+  app_mobile_optimized --> project_description_tab
+  app_mobile_optimized --> qa_tab
+  app_mobile_optimized --> regression_engine
+  app_mobile_optimized --> scrape_ff5
+  app_mobile_optimized --> stock_analysis_renderer
+  app_mobile_optimized --> stock_returns
+  bridge_adapter -.-> excel_bridge
+  capm -.-> scrape_ff5
+  damodaran -.-> fetch_damodaran_betas
+  fama_french -.-> scrape_ff5
+  fin_report_tab -.-> fcf_calculations
+  fin_report_tab -.-> generate_report
+  fin_report_tab -.-> historical_data_extractor
+  hedge_prompt -.-> risk_hedge
+  historical_data_extractor -.-> finance_data_loader
+  nwc -.-> capm
+  test_bridge -.-> excel_bridge
+  qa_engine.QnA -.-> qa_tab
+      </div>
+    </div>
+  </div>
+</body></html>

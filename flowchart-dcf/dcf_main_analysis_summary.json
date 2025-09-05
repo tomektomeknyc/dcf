@@ -1,0 +1,472 @@
+{
+  "main_app_guess": "dcf-main.app",
+  "file_count": 44,
+  "modules_count": 44,
+  "top_packages": {
+    "dcf-main": 44
+  },
+  "categories": {
+    "dcf-main.app": [
+      "UI/Streamlit",
+      "Data",
+      "Charts",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.app_mobile_optimized": [
+      "UI/Streamlit",
+      "Data",
+      "Charts",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.bridge_adapter": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.capm": [
+      "UI/Streamlit",
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.damodaran": [
+      "UI/Streamlit",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.data_gatekeeper": [
+      "Data"
+    ],
+    "dcf-main.dcf_valuation": [
+      "UI/Streamlit",
+      "Data",
+      "LLM",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.debug_airnz": [
+      "Data"
+    ],
+    "dcf-main.ev_ebitda": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.excel_bridge": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.fama_french": [
+      "UI/Streamlit",
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.fcf_calculations": [
+      "UI/Streamlit",
+      "Data",
+      "LLM",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.fcfe": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.fetch_damodaran_betas": [
+      "UI/Streamlit",
+      "Data",
+      "Finance/Quant Engine",
+      "Scraping/API"
+    ],
+    "dcf-main.fin_report_tab": [
+      "UI/Streamlit",
+      "Charts",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.fin_stat_downloader": [
+      "UI/Streamlit",
+      "Data",
+      "Finance/Quant Engine",
+      "Scraping/API"
+    ],
+    "dcf-main.finance_data_loader": [
+      "Data"
+    ],
+    "dcf-main.generate_report": [
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.hedge_prompt": [
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.historical_data_extractor": [
+      "Data"
+    ],
+    "dcf-main.metrics": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.news_fetcher": [
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.nwc": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.ocr_image_pdf": [
+      "Uncategorized"
+    ],
+    "dcf-main.pdf_text": [
+      "Uncategorized"
+    ],
+    "dcf-main.project_description_tab": [
+      "UI/Streamlit",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.qa_tab": [
+      "UI/Streamlit",
+      "LLM",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.regression_engine": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.risk_hedge": [
+      "Data"
+    ],
+    "dcf-main.scrape_damodaran": [
+      "Data",
+      "Finance/Quant Engine",
+      "Scraping/API"
+    ],
+    "dcf-main.scrape_ff5": [
+      "UI/Streamlit",
+      "Data",
+      "Finance/Quant Engine",
+      "Scraping/API"
+    ],
+    "dcf-main.stock_analysis_renderer": [
+      "UI/Streamlit",
+      "Charts",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.stock_returns": [
+      "UI/Streamlit",
+      "Data"
+    ],
+    "dcf-main.test_bridge": [
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.ticker_to_industry": [
+      "Uncategorized"
+    ],
+    "dcf-main.ticker_to_region": [
+      "Uncategorized"
+    ],
+    "dcf-main.video_transcribe": [
+      "Uncategorized"
+    ],
+    "dcf-main.wacc_engine": [
+      "Data",
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.web_scraper": [
+      "Uncategorized"
+    ],
+    "dcf-main.connectors.aws_min": [
+      "Finance/Quant Engine"
+    ],
+    "dcf-main.db.__init__": [
+      "Uncategorized"
+    ],
+    "dcf-main.db.engine": [
+      "Finance/Quant Engine",
+      "Database"
+    ],
+    "dcf-main.db.models": [
+      "Finance/Quant Engine",
+      "Database"
+    ],
+    "dcf-main.qa_engine.QnA": [
+      "UI/Streamlit"
+    ]
+  },
+  "external_imports": {
+    "dcf-main.app": [
+      "bridge_adapter",
+      "capm",
+      "connectors",
+      "data_gatekeeper",
+      "datetime",
+      "db",
+      "dcf_valuation",
+      "ev_ebitda",
+      "excel_bridge",
+      "fcf_calculations",
+      "fcfe",
+      "fetch_damodaran_betas",
+      "fin_report_tab",
+      "fin_stat_downloader",
+      "hedge_prompt",
+      "metrics",
+      "news_fetcher",
+      "numpy",
+      "nwc",
+      "os",
+      "pandas",
+      "pandas_datareader",
+      "pathlib",
+      "pickle",
+      "plotly",
+      "project_description_tab",
+      "qa_tab",
+      "regression_engine",
+      "risk_hedge",
+      "scrape_ff5",
+      "stock_analysis_renderer",
+      "stock_returns",
+      "streamlit",
+      "sys",
+      "ticker_to_industry",
+      "ticker_to_region",
+      "time",
+      "typing",
+      "uuid",
+      "warnings",
+      "yaml"
+    ],
+    "dcf-main.app_mobile_optimized": [
+      "dcf_valuation",
+      "fcf_calculations",
+      "fetch_damodaran_betas",
+      "fin_report_tab",
+      "metrics",
+      "news_fetcher",
+      "numpy",
+      "os",
+      "pandas",
+      "pathlib",
+      "plotly",
+      "project_description_tab",
+      "qa_tab",
+      "regression_engine",
+      "scrape_ff5",
+      "stock_analysis_renderer",
+      "stock_returns",
+      "streamlit",
+      "sys",
+      "ticker_to_industry",
+      "time",
+      "uuid",
+      "warnings"
+    ],
+    "dcf-main.bridge_adapter": [
+      "excel_bridge",
+      "pandas",
+      "yaml"
+    ],
+    "dcf-main.capm": [
+      "pandas",
+      "pathlib",
+      "scrape_ff5",
+      "streamlit"
+    ],
+    "dcf-main.damodaran": [
+      "fetch_damodaran_betas",
+      "pathlib",
+      "streamlit",
+      "ticker_to_industry",
+      "ticker_to_region",
+      "typing"
+    ],
+    "dcf-main.data_gatekeeper": [
+      "os",
+      "pandas"
+    ],
+    "dcf-main.dcf_valuation": [
+      "json",
+      "logging",
+      "openai",
+      "os",
+      "pandas",
+      "pathlib",
+      "streamlit"
+    ],
+    "dcf-main.debug_airnz": [
+      "pandas",
+      "pathlib",
+      "re",
+      "sys"
+    ],
+    "dcf-main.ev_ebitda": [
+      "pandas"
+    ],
+    "dcf-main.excel_bridge": [
+      "__future__",
+      "openpyxl",
+      "pandas",
+      "pathlib",
+      "yaml"
+    ],
+    "dcf-main.fama_french": [
+      "__future__",
+      "pandas",
+      "scrape_ff5",
+      "streamlit",
+      "ticker_to_industry",
+      "ticker_to_region",
+      "time",
+      "typing"
+    ],
+    "dcf-main.fcf_calculations": [
+      "openai",
+      "os",
+      "pandas",
+      "re",
+      "streamlit"
+    ],
+    "dcf-main.fcfe": [
+      "pandas",
+      "typing"
+    ],
+    "dcf-main.fetch_damodaran_betas": [
+      "bs4",
+      "io",
+      "logging",
+      "pandas",
+      "pathlib",
+      "re",
+      "requests",
+      "streamlit",
+      "urllib",
+      "urllib3"
+    ],
+    "dcf-main.fin_report_tab": [
+      "fcf_calculations",
+      "generate_report",
+      "historical_data_extractor",
+      "matplotlib",
+      "pathlib",
+      "pickle",
+      "streamlit",
+      "string"
+    ],
+    "dcf-main.fin_stat_downloader": [
+      "__future__",
+      "dotenv",
+      "io",
+      "os",
+      "pandas",
+      "re",
+      "requests",
+      "streamlit",
+      "typing",
+      "yfinance"
+    ],
+    "dcf-main.finance_data_loader": [
+      "pandas",
+      "pathlib"
+    ],
+    "dcf-main.generate_report": [
+      "os"
+    ],
+    "dcf-main.hedge_prompt": [
+      "__future__",
+      "dataclasses",
+      "risk_hedge",
+      "typing"
+    ],
+    "dcf-main.historical_data_extractor": [
+      "finance_data_loader",
+      "pandas"
+    ],
+    "dcf-main.metrics": [
+      "numpy",
+      "pandas"
+    ],
+    "dcf-main.news_fetcher": [
+      "feedparser",
+      "re"
+    ],
+    "dcf-main.nwc": [
+      "capm",
+      "numpy",
+      "pandas",
+      "typing"
+    ],
+    "dcf-main.project_description_tab": [
+      "streamlit"
+    ],
+    "dcf-main.qa_tab": [
+      "inspect",
+      "openai",
+      "pathlib",
+      "re",
+      "streamlit"
+    ],
+    "dcf-main.regression_engine": [
+      "pandas",
+      "statsmodels"
+    ],
+    "dcf-main.risk_hedge": [
+      "__future__",
+      "dataclasses",
+      "numpy",
+      "pandas"
+    ],
+    "dcf-main.scrape_damodaran": [
+      "bs4",
+      "pandas",
+      "requests"
+    ],
+    "dcf-main.scrape_ff5": [
+      "bs4",
+      "difflib",
+      "io",
+      "pandas",
+      "pathlib",
+      "re",
+      "requests",
+      "streamlit",
+      "zipfile"
+    ],
+    "dcf-main.stock_analysis_renderer": [
+      "matplotlib",
+      "os",
+      "pathlib",
+      "streamlit"
+    ],
+    "dcf-main.stock_returns": [
+      "datetime",
+      "dotenv",
+      "os",
+      "pandas",
+      "pathlib",
+      "refinitiv",
+      "streamlit"
+    ],
+    "dcf-main.test_bridge": [
+      "excel_bridge",
+      "yaml"
+    ],
+    "dcf-main.wacc_engine": [
+      "numpy",
+      "pandas"
+    ],
+    "dcf-main.connectors.aws_min": [
+      "__future__",
+      "boto3",
+      "botocore",
+      "json",
+      "os",
+      "typing"
+    ],
+    "dcf-main.db.engine": [
+      "sqlmodel"
+    ],
+    "dcf-main.db.models": [
+      "datetime",
+      "sqlmodel",
+      "typing"
+    ],
+    "dcf-main.qa_engine.QnA": [
+      "qa_tab",
+      "streamlit"
+    ]
+  },
+  "edges_count": 1
+}

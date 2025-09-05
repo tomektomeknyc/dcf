@@ -1,0 +1,18 @@
+flowchart LR
+    A[dcf-main (Streamlit orchestrator)\ndcf-main.app]
+    B0([Engines])
+    A --> B0
+    B1([Data])
+    A --> B1
+    B2([LLM])
+    A --> B2
+    B3([Dashboards])
+    A --> B3
+    B4([Scraping])
+    A --> B4
+    B5([DB])
+    A --> B5
+    X1[(Excel/CSV)] --> B1
+    X2[(Market APIs)] --> B3
+    X3[(DB/Parquet)] --> B4
+    B4 --> A
