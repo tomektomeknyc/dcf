@@ -2,7 +2,7 @@
 import time
 import streamlit as st
 st.set_page_config(
-    page_title="DCF-Main",
+    page_title="🚀 DCF- Main"",
     page_icon="💹",
     layout="wide",
     initial_sidebar_state="collapsed",  # sidebar starts collapsed
@@ -25,12 +25,12 @@ init_db()
 from db.engine import init_db
 engine = init_db()
 
-# ─── 1) Streamlit page config ─────────────────────────────────
-st.set_page_config(
-    page_title="🚀 Starship Finance Simulator", 
-    layout="wide", 
-    initial_sidebar_state="collapsed"
-)
+# # ─── 1) Streamlit page config ─────────────────────────────────
+# st.set_page_config(
+#     page_title="🚀 Starship Finance Simulator", 
+#     layout="wide", 
+#     initial_sidebar_state="collapsed"
+# )
 st.markdown(
     """
     <style>
