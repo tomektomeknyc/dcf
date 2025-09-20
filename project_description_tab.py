@@ -119,33 +119,33 @@ def render_project_description_tab():
     
     # FCFF and FCFE Formulas
     st.markdown("#### Free Cash Flow Formulas")
-    st.image("FCFF_FCFE.jpg", caption="FCFF & FCFE Calculation Methods", width=300)
+    st.image("images/FCFF_FCFE.jpg", caption="FCFF & FCFE Calculation Methods", width=300)
     with st.expander("Click to view full size"):
-       st.image("FCFF_FCFE.jpg", caption="FCFF & FCFE Calculation Methods - Full Size")
+       st.image("images/FCFF_FCFE.jpg", caption="FCFF & FCFE Calculation Methods - Full Size")
     
     st.markdown("---")
     
     # Present Value of FCF
     st.markdown("#### Present Value of Free Cash Flow")
-    st.image("PV_FCF.jpg", caption="Present Value DCF Calculations", width=300)
+    st.image("images/PV_FCF.jpg", caption="Present Value DCF Calculations", width=300)
     with st.expander("Click to view full size"):
-       st.image("PV_FCF.jpg", caption="Present Value DCF Calculations - Full Size")
+       st.image("images/PV_FCF.jpg", caption="Present Value DCF Calculations - Full Size")
     
     st.markdown("---")
     
     # Additional FCFE and FCFF Reference
     st.markdown("#### Extended FCFE & FCFF Analysis")
-    st.image("FCFE_FCFF_2.jpg", caption="Advanced FCFE and FCFF Methods", width=300)
+    st.image("images/FCFE_FCFF_2.jpg", caption="Advanced FCFE and FCFF Methods", width=300)
     with st.expander("Click to view full size"):
-       st.image("FCFE_FCFF_2.jpg", caption="Advanced FCFE and FCFF Methods")
+       st.image("images/FCFE_FCFF_2.jpg", caption="Advanced FCFE and FCFF Methods")
     
     st.markdown("---")
     
     # Valuation Methods Overview
     st.markdown("#### Valuation Methodologies")
-    st.image("Valuation_Methods.jpg", caption="Complete Valuation Framework", width=300)
+    st.image("images/Valuation_Methods.jpg", caption="Complete Valuation Framework", width=300)
     with st.expander("Click to view full size"):
-       st.image("Valuation_Methods.jpg", caption="Complete Valuation Framework")
+       st.image("images/Valuation_Methods.jpg", caption="Complete Valuation Framework")
     
     st.markdown("""
     ### 💡 Investment Insights
