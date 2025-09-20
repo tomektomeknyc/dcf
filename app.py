@@ -2,7 +2,7 @@
 import time
 import streamlit as st
 st.set_page_config(
-    page_title="🚀 DCF- Main"",
+    page_title="🚀 DCF- Main",
     page_icon="💹",
     layout="wide",
     initial_sidebar_state="collapsed",  # sidebar starts collapsed
