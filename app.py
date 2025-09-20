@@ -1,7 +1,6 @@
 # app.py
 import time
 import streamlit as st
-#─── 1) Streamlit page config ─────────────────────────────────
 st.set_page_config(
     page_title="🚀 DCF- Main",
     page_icon="💹",
