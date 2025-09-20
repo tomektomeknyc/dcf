@@ -1,6 +1,13 @@
 # app.py
 import time
 import streamlit as st
+st.set_page_config(
+    page_title="DCF-Main",
+    page_icon="💹",
+    layout="wide",
+    initial_sidebar_state="collapsed",  # sidebar starts collapsed
+)
+
 from news_fetcher import get_headlines
 from stock_analysis_renderer import render_financial_analysis
 from pathlib import Path
