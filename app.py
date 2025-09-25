@@ -678,7 +678,7 @@ st.sidebar.markdown(
 )
 
 methods = st.sidebar.multiselect(
-    label="",
+    label="Estimation Methods",
     options=["Historical", "FF-5", "CAPM", "Damo Alpha"],
     default=["Historical"],
 )
